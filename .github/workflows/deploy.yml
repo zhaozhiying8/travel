@@ -25,11 +25,28 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
         
-      - name: Deploy directly with token
+      - name: Debug Token
         run: |
+          echo "=== Token Debug ==="
           echo "Token prefix: ${VERCEL_TOKEN:0:15}..."
-          echo "Attempting to deploy..."
+          echo "Token length: ${#VERCEL_TOKEN}"
+          if [[ "$VERCEL_TOKEN" == vercel_* ]]; then
+            echo "Token type: Personal Token"
+          elif [[ "$VERCEL_TOKEN" == vcp_* ]]; then
+            echo "Token type: Project Token - THIS WON'T WORK FOR DEPLOYMENT!"
+          else
+            echo "Token type: Unknown"
+          fi
+          echo "==================="
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Deploy to Vercel
+        run: |
+          echo "Starting deployment..."
           cd dist
+          echo "Attempting: vercel deploy --prod --yes"
           vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+          echo "Deploy exit code: $?"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
