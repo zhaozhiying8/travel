@@ -1,0 +1,2 @@
+
+c4346afa3d1e799e206c6b3645a36d3afaa84c96	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/dayjs","integrity":null,"time":1785998482124,"size":"262","metadata":{"time":1785998482124,"url":"http://registry.npm.taobao.org/dayjs","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/dayjs"},"options":{"compress":true},"status":301}}

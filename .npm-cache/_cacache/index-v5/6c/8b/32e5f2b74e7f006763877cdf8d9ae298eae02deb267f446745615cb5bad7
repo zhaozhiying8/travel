@@ -1,0 +1,2 @@
+
+d90c28f8244d88457c9f58c74f4a1aad30cc6413	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/pinia","integrity":null,"time":1785998481481,"size":"262","metadata":{"time":1785998481481,"url":"http://registry.npm.taobao.org/pinia","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:21 GMT","location":"https://registry.npmmirror.com/pinia"},"options":{"compress":true},"status":301}}

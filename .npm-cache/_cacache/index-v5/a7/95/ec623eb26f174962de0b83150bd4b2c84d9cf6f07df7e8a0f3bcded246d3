@@ -1,0 +1,2 @@
+
+61441ce932a84b0cee1385dadee65c80ad80cf9b	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/@esbuild%2fopenbsd-x64","integrity":null,"time":1785998482485,"size":"262","metadata":{"time":1785998482485,"url":"http://registry.npm.taobao.org/@esbuild%2fopenbsd-x64","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/@esbuild%2fopenbsd-x64"},"options":{"compress":true},"status":301}}

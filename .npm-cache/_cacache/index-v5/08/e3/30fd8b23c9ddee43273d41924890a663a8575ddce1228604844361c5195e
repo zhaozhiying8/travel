@@ -1,0 +1,2 @@
+
+92f6f4804f7ae3adc4a3806e0c1661b4f8dfeef0	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/@vue%2fruntime-dom","integrity":null,"time":1785998482121,"size":"262","metadata":{"time":1785998482121,"url":"http://registry.npm.taobao.org/@vue%2fruntime-dom","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/@vue%2fruntime-dom"},"options":{"compress":true},"status":301}}

@@ -1,0 +1,2 @@
+
+00eb1bbcf778dbc67052fd65d8bb1dfe4b68faf3	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/@sxzz%2fpopperjs-es","integrity":null,"time":1785998482124,"size":"262","metadata":{"time":1785998482124,"url":"http://registry.npm.taobao.org/@sxzz%2fpopperjs-es","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/@sxzz%2fpopperjs-es"},"options":{"compress":true},"status":301}}

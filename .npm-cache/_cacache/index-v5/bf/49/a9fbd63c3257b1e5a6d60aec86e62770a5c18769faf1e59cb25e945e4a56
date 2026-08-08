@@ -1,0 +1,2 @@
+
+5d1718f3ac4a455bcf8f8eb00851e3e37bf73225	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/lightningcss","integrity":null,"time":1785998481785,"size":"262","metadata":{"time":1785998481785,"url":"http://registry.npm.taobao.org/lightningcss","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:21 GMT","location":"https://registry.npmmirror.com/lightningcss"},"options":{"compress":true},"status":301}}

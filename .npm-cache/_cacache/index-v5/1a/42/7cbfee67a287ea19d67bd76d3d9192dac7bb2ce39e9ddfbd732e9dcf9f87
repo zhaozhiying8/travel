@@ -1,0 +1,2 @@
+
+bf2a066ed2191ab9606f4fd497d46b8dc25354c7	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/memoize-one","integrity":null,"time":1785998482143,"size":"262","metadata":{"time":1785998482143,"url":"http://registry.npm.taobao.org/memoize-one","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/memoize-one"},"options":{"compress":true},"status":301}}

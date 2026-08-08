@@ -1,0 +1,2 @@
+
+84c45e087458da56bb8c41d26e818fef6b8bb175	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/normalize-wheel-es","integrity":null,"time":1785998482143,"size":"262","metadata":{"time":1785998482143,"url":"http://registry.npm.taobao.org/normalize-wheel-es","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/normalize-wheel-es"},"options":{"compress":true},"status":301}}

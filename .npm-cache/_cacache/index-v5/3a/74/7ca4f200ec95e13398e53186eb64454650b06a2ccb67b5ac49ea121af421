@@ -1,0 +1,2 @@
+
+bc9fa268b1f3e58d9fb0d2f37947a971ec6a6c2e	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/@vueuse%2fshared","integrity":null,"time":1785998482287,"size":"262","metadata":{"time":1785998482287,"url":"http://registry.npm.taobao.org/@vueuse%2fshared","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/@vueuse%2fshared"},"options":{"compress":true},"status":301}}

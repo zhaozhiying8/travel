@@ -1,0 +1,2 @@
+
+5400d3f00db7876c52f1f98a44a807a16d727a6a	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/@esbuild%2flinux-s390x","integrity":null,"time":1785998482485,"size":"262","metadata":{"time":1785998482485,"url":"http://registry.npm.taobao.org/@esbuild%2flinux-s390x","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/@esbuild%2flinux-s390x"},"options":{"compress":true},"status":301}}

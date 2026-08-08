@@ -1,0 +1,2 @@
+
+0db390ae0973e361a31ab78d2ee51294f6c0db4f	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/element-plus","integrity":null,"time":1785998481088,"size":"262","metadata":{"time":1785998481088,"url":"http://registry.npm.taobao.org/element-plus","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:21 GMT","location":"https://registry.npmmirror.com/element-plus"},"options":{"compress":true},"status":301}}

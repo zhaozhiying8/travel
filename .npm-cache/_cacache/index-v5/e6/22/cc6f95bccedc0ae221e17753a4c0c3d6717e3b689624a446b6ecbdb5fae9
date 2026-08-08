@@ -1,0 +1,2 @@
+
+caa6d7319ed0af7337a3039ef0e8d75b286f7b35	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/@esbuild%2fandroid-arm64","integrity":null,"time":1785998482477,"size":"262","metadata":{"time":1785998482477,"url":"http://registry.npm.taobao.org/@esbuild%2fandroid-arm64","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/@esbuild%2fandroid-arm64"},"options":{"compress":true},"status":301}}

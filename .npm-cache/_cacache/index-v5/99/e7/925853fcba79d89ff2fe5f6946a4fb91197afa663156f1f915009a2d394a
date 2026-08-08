@@ -1,0 +1,2 @@
+
+4278847c279bef8afa5621de7f4d33c1f5e9cd85	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/@types%2fweb-bluetooth","integrity":null,"time":1785998482287,"size":"262","metadata":{"time":1785998482287,"url":"http://registry.npm.taobao.org/@types%2fweb-bluetooth","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/@types%2fweb-bluetooth"},"options":{"compress":true},"status":301}}

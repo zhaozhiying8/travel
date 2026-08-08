@@ -1,0 +1,2 @@
+
+abb54effa6f1d0137a2402f25722b5b839097ef2	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/@esbuild%2ffreebsd-x64","integrity":null,"time":1785998482478,"size":"262","metadata":{"time":1785998482478,"url":"http://registry.npm.taobao.org/@esbuild%2ffreebsd-x64","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/@esbuild%2ffreebsd-x64"},"options":{"compress":true},"status":301}}

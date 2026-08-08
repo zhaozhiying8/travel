@@ -1,0 +1,2 @@
+
+677bbacb011bb08df5ddb9694204fa85bc39c636	{"key":"make-fetch-happen:request-cache:http://registry.npm.taobao.org/estree-walker","integrity":null,"time":1785998482691,"size":"262","metadata":{"time":1785998482691,"url":"http://registry.npm.taobao.org/estree-walker","reqHeaders":{"accept":"application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*"},"resHeaders":{"content-type":"text/html","date":"Thu, 06 Aug 2026 06:41:22 GMT","location":"https://registry.npmmirror.com/estree-walker"},"options":{"compress":true},"status":301}}
