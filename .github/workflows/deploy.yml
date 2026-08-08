@@ -5,10 +5,6 @@ on:
     branches: [master]
   workflow_dispatch:
 
-env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
 jobs:
   Deploy:
     runs-on: ubuntu-latest
@@ -19,7 +15,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'npm'
           
       - name: Install dependencies
         run: npm install
@@ -30,6 +25,12 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
         
+      - name: Verify Vercel Token
+        run: |
+          echo "Verifying Vercel token..."
+          echo "Token prefix: ${VERCEL_TOKEN:0:10}..."
+          vercel whoami --token=${{ secrets.VERCEL_TOKEN }}
+          
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         
