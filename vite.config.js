@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    allowedHosts: ['.loca.lt'],
     proxy: {
       // 百度百科代理 - 解决跨域问题
       '/baike-proxy': {
@@ -18,5 +19,9 @@ export default defineConfig({
         }
       }
     }
+  },
+  preview: {
+    port: 4173,
+    allowedHosts: ['.loca.lt']
   }
 })
