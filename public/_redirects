@@ -1,0 +1,6 @@
+# Cloudflare Pages - SPA fallback
+# /api/* requests are handled by Pages Functions (functions/api/baike-proxy.js)
+# Rule 1: Keep /api/* as-is so Functions can handle it
+/api/*    /api/$1    200
+# Rule 2: Everything else falls back to index.html for SPA
+/*        /index.html    200

@@ -10,8 +10,15 @@ export async function fetchBaikeData(name) {
   if (baikeCache[name]) return baikeCache[name]
 
   try {
-    // 通过Vite proxy获取百度百科页面HTML
-    const url = `/baike-proxy/item/${encodeURIComponent(name)}`
+    // 代理地址:
+    // - 开发环境 (Vite): /baike-proxy/* 由 vite.config.js proxy 转发到 baike.baidu.com
+    // - Cloudflare Pages 生产环境: /api/baike-proxy?path=* 由 Pages Function 处理
+    // - Vercel 生产环境: /baike-proxy/* 由 vercel.json rewrites 重写到 /api/baike-proxy?path=*
+    const isCfProd = typeof window !== 'undefined' && window.location.hostname.endsWith('.pages.dev')
+    const base = isCfProd ? '/api/baike-proxy' : '/baike-proxy'
+    const url = isCfProd
+      ? `${base}?path=/item/${encodeURIComponent(name)}`
+      : `${base}/item/${encodeURIComponent(name)}`
     const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
     if (!response.ok) {
       console.warn(`百度百科页⾯访问失败: ${name}, status: ${response.status}`)

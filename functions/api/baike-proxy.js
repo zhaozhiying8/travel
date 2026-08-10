@@ -1,12 +1,11 @@
 // Cloudflare Pages Function: 百度百科代理
-// 从 Vercel Serverless Function 迁移
 // 路由: /api/baike-proxy?path=/item/xxx
-export async function onRequestGet(context) {
-  const { request, env } = context
+export async function onRequest(context) {
+  const { request } = context
   const url = new URL(request.url)
-  const path = url.searchParams.get('path') || '/'
-
-  const target = `https://baike.baidu.com${path.startsWith('/') ? path : '/' + path}`
+  const queryPath = url.searchParams.get('path') || '/'
+  const targetPath = queryPath.startsWith('/') ? queryPath : '/' + queryPath
+  const target = `https://baike.baidu.com${targetPath}`
 
   const headers = new Headers({
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
