@@ -28,5 +28,4 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           npx wrangler@3 pages deploy dist \
-            --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} \
-            --functions-directory=functions
+            --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }}
