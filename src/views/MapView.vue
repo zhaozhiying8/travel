@@ -30,6 +30,114 @@ const destination = ref(trip.selectedAttraction || null)
 const routeResults = ref([])      // 各出行方式结果
 const activeMode = ref('driving') // 当前选中方式
 
+// ===== 手动搜索起点/终点相关状态 =====
+let placeSearch = null
+const editingWhich = ref(null) // 'origin' | 'dest' | null
+const searchQuery = ref('')
+const searchCandidates = ref([])
+const searchLoading = ref(false)
+// 防抖定时器
+let searchTimer = null
+
+// 打开某个端点的编辑
+function openEditor(which) {
+  editingWhich.value = which
+  searchQuery.value = (which === 'origin' ? origin.value?.name : destination.value?.name) || ''
+  searchCandidates.value = []
+  // 初始加载附近的热门POI（给用户一些选项）
+  setTimeout(() => doSearch(''), 50)
+}
+function closeEditor() {
+  editingWhich.value = null
+  searchCandidates.value = []
+  searchQuery.value = ''
+}
+
+// 执行POI搜索
+async function doSearch(keyword) {
+  if (!AMap && !placeSearch) return
+  searchLoading.value = true
+  try {
+    if (!placeSearch) {
+      placeSearch = new AMap.PlaceSearch({
+        pageSize: 8,
+        pageIndex: 1,
+        extensions: 'base',
+        // 如果有终点或起点，优先在所在城市搜
+        city: (destination.value?.city || origin.value?.city || '全国')
+      })
+    }
+    // 更新所在城市
+    if (placeSearch.setCity) {
+      placeSearch.setCity(destination.value?.city || origin.value?.city || '全国')
+    }
+    const status = await new Promise(resolve => {
+      placeSearch.search(keyword || '景点', (status, result) => {
+        if (status === 'complete' && result?.poiList?.pois?.length) {
+          searchCandidates.value = result.poiList.pois.map(p => ({
+            name: p.name,
+            address: p.address,
+            lng: p.location?.lng,
+            lat: p.location?.lat,
+            city: p.cityname || '',
+            adname: p.adname || '',
+            type: p.type || ''
+          })).filter(p => p.lng && p.lat)
+        } else {
+          searchCandidates.value = []
+        }
+        resolve(status)
+      })
+    })
+    return status
+  } catch (e) {
+    console.warn('POI搜索失败:', e)
+    searchCandidates.value = []
+  } finally {
+    searchLoading.value = false
+  }
+}
+
+// 输入变化时防抖搜索
+function onQueryInput(e) {
+  const v = e.target?.value ?? searchQuery.value
+  searchQuery.value = v
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => doSearch(v), 250)
+}
+
+// 选中候选后回填
+function selectCandidate(p) {
+  const target = {
+    name: p.name,
+    address: [p.city, p.adname, p.address].filter(Boolean).join(''),
+    lng: p.lng,
+    lat: p.lat,
+    city: p.city
+  }
+  if (editingWhich.value === 'origin') {
+    origin.value = target
+    trip.setCurrentLocation(target)
+  } else {
+    destination.value = target
+    trip.selectAttraction(target)
+  }
+  closeEditor()
+  drawMarkers()
+  if (origin.value && destination.value) {
+    doPlan()
+  }
+}
+
+// 交换起点和终点
+function swapEndpoints() {
+  const tmp = origin.value
+  origin.value = destination.value
+  destination.value = tmp
+  drawMarkers()
+  if (origin.value && destination.value) doPlan()
+}
+
 // 起点终点是否就绪
 const ready = computed(() => origin.value && destination.value &&
   origin.value.lng && destination.value.lng)
@@ -238,23 +346,101 @@ onBeforeUnmount(() => {
       <div class="control-panel card">
         <h2 class="panel-title">🗺️ 路线导航</h2>
 
-        <!-- 起点终点信息 -->
+        <!-- 起点终点信息（支持手动输入搜索） -->
         <div class="endpoint">
-          <div class="ep-item">
+          <!-- 起点 -->
+          <div class="ep-item" :class="{ editing: editingWhich === 'origin' }" @click="editingWhich !== 'origin' && openEditor('origin')">
             <span class="ep-dot origin"></span>
             <div class="ep-info">
               <span class="ep-label">起点</span>
-              <span class="ep-name">{{ origin ? origin.name : '未定位' }}</span>
-              <span v-if="origin" class="ep-addr">{{ origin.address || `${origin.lng.toFixed(4)}, ${origin.lat.toFixed(4)}` }}</span>
+              <!-- 显示模式 -->
+              <div v-if="editingWhich !== 'origin'" class="ep-display">
+                <span class="ep-name">{{ origin ? origin.name : '点击设置起点' }}</span>
+                <span v-if="origin" class="ep-addr">{{ origin.address || `${origin.lng.toFixed(4)}, ${origin.lat.toFixed(4)}` }}</span>
+                <span class="ep-edit-hint">✎ 点击修改</span>
+              </div>
+              <!-- 编辑模式 -->
+              <div v-else class="ep-editor" @click.stop>
+                <input
+                  class="ep-input"
+                  type="text"
+                  v-model="searchQuery"
+                  @input="onQueryInput"
+                  :placeholder="editingWhich === 'origin' ? '输入起点地址或名称...' : '输入终点地址或名称...'"
+                  autofocus
+                />
+                <!-- 候选列表 -->
+                <div v-if="searchCandidates.length || searchLoading" class="ep-candidates">
+                  <div v-if="searchLoading" class="cand-loading">
+                    <span class="spinner small"></span> 搜索中...
+                  </div>
+                  <div
+                    v-for="(c, i) in searchCandidates"
+                    :key="i"
+                    class="cand-item"
+                    @click="selectCandidate(c)"
+                  >
+                    <div class="cand-name">{{ c.name }}</div>
+                    <div class="cand-addr">{{ c.city }}{{ c.adname }} · {{ c.address }}</div>
+                  </div>
+                  <div v-if="!searchLoading && searchCandidates.length === 0" class="cand-empty">
+                    未找到匹配地点
+                  </div>
+                </div>
+                <div class="ep-editor-actions">
+                  <button class="btn-link cancel" @click.stop="closeEditor">取消</button>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="ep-line"></div>
-          <div class="ep-item">
+
+          <!-- 交换按钮 -->
+          <div class="ep-swap-wrap">
+            <button class="ep-swap" @click.stop="swapEndpoints" title="交换起点和终点">
+              ⇅
+            </button>
+          </div>
+
+          <!-- 终点 -->
+          <div class="ep-item" :class="{ editing: editingWhich === 'dest' }" @click="editingWhich !== 'dest' && openEditor('dest')">
             <span class="ep-dot dest"></span>
             <div class="ep-info">
               <span class="ep-label">终点</span>
-              <span class="ep-name">{{ destination ? destination.name : '未选择景点' }}</span>
-              <span v-if="destination" class="ep-addr">{{ destination.address || destination.desc || '' }}</span>
+              <div v-if="editingWhich !== 'dest'" class="ep-display">
+                <span class="ep-name">{{ destination ? destination.name : '点击设置终点' }}</span>
+                <span v-if="destination" class="ep-addr">{{ destination.address || destination.desc || '' }}</span>
+                <span class="ep-edit-hint">✎ 点击修改</span>
+              </div>
+              <div v-else class="ep-editor" @click.stop>
+                <input
+                  class="ep-input"
+                  type="text"
+                  v-model="searchQuery"
+                  @input="onQueryInput"
+                  :placeholder="editingWhich === 'origin' ? '输入起点地址或名称...' : '输入终点地址或名称...'"
+                  autofocus
+                />
+                <div v-if="searchCandidates.length || searchLoading" class="ep-candidates">
+                  <div v-if="searchLoading" class="cand-loading">
+                    <span class="spinner small"></span> 搜索中...
+                  </div>
+                  <div
+                    v-for="(c, i) in searchCandidates"
+                    :key="i"
+                    class="cand-item"
+                    @click="selectCandidate(c)"
+                  >
+                    <div class="cand-name">{{ c.name }}</div>
+                    <div class="cand-addr">{{ c.city }}{{ c.adname }} · {{ c.address }}</div>
+                  </div>
+                  <div v-if="!searchLoading && searchCandidates.length === 0" class="cand-empty">
+                    未找到匹配地点
+                  </div>
+                </div>
+                <div class="ep-editor-actions">
+                  <button class="btn-link cancel" @click.stop="closeEditor">取消</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -352,6 +538,19 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 10px;
   align-items: flex-start;
+  position: relative;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.ep-item:hover {
+  background: #eef0f5;
+}
+.ep-item.editing {
+  cursor: default;
+  background: transparent;
 }
 .ep-dot {
   width: 12px;
@@ -361,19 +560,130 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   border: 2px solid #fff;
   box-shadow: 0 0 0 2px currentColor;
+  z-index: 1;
 }
 .ep-dot.origin { background: #1976d2; color: #1976d2; }
 .ep-dot.dest { background: #ff6b35; color: #ff6b35; }
-.ep-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ep-info { display: flex; flex-direction: column; flex: 1; min-width: 0; position: relative; }
 .ep-label { font-size: 11px; color: var(--text-light); }
 .ep-name { font-size: 14px; font-weight: 600; word-break: break-all; }
 .ep-addr { font-size: 12px; color: var(--text-light); word-break: break-all; }
-.ep-line {
-  width: 2px;
-  height: 20px;
-  background: #d0d3d8;
-  margin-left: 5px;
-  margin: 4px 0 4px 5px;
+
+/* 可点击展示 */
+.ep-display {
+  padding: 0;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+}
+.ep-edit-hint {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  font-size: 11px;
+  color: var(--text-light);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.ep-display:hover .ep-edit-hint { opacity: 1; }
+
+/* 交换按钮 */
+.ep-swap-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0 2px 18px;
+  position: relative;
+  z-index: 2;
+}
+.ep-swap {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  aspect-ratio: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #d0d3d8;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+}
+.ep-swap:hover {
+  transform: rotate(180deg);
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* 编辑态 */
+.ep-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ep-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--primary);
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  box-sizing: border-box;
+}
+.ep-input:focus { box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15); }
+.ep-candidates {
+  background: #fff;
+  border: 1px solid #e3e6ef;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.cand-loading, .cand-empty {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text-light);
+  text-align: center;
+}
+.cand-item {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f1f3f7;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cand-item:last-child { border-bottom: none; }
+.cand-item:hover { background: #fff5ef; }
+.cand-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.cand-addr { font-size: 12px; color: var(--text-light); word-break: break-all; }
+.ep-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.btn-link {
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--text-light);
+}
+.btn-link:hover { background: #eef0f5; color: var(--text); }
+
+/* spinner小尺寸（通用） */
+.spinner.small {
+  width: 14px; height: 14px;
+  border-width: 1.5px;
 }
 
 .panel-actions {

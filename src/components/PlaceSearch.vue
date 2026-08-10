@@ -48,14 +48,21 @@ function onInput(val) {
       loading.value = true
       try {
         const result = await getInputTips(val)
-        tips.value = result.map(t => ({
+        // 过滤：排除非景点类型（地铁、公交、酒店、停车场等）
+        const excludeKeywords = ['地铁', '公交站', '汽车站', '火车站', '机场', '航站楼', '停车场', '停车', '酒店', '宾馆', '旅馆', '客栈', '民宿', '加油站', '充电站', '充电', '服务区', '收费站', '医院', '诊所', '药店', '药房', '医疗', '保健', '护理', '体检', '学校', '大学', '幼儿园', '银行', 'ATM', '超市', '商场', '市场', '购物中心', '写字楼', '办公楼', '小区', '公寓', '别墅区', '政府机关', '街道办事处', '派出所', '公安局', '餐厅', '饭店', '餐馆', '小吃', '火锅', '烧烤', '咖啡', '茶馆', '奶茶', '美食', '购物', '影城', '电影院', 'KTV', '酒吧', '健身房', '健身', '美容', '美发', '理发', '4S店', '汽车维修', '洗车', '汽车', '物流', '快递', '邮局', '营业厅', '保险', '证券', '售楼处', '房产中介', '房产', '家政', '婚庆', '婚纱', '摄影', '写真', '影楼', '儿童摄影', '写真馆', '宠物医院', '洗浴', '汗蒸', 'SPA', '按摩', '足疗', '会所', '协会', '托儿所', '培训', '驾校', '维修', '厂房', '仓库', '基地', '开发区', '高新区', '产业园', '科技园', '大学城', '公司', '企业', '事务所', '工作室', '门市部', '经销部', '办事处']
+        const filtered = result.filter(t => {
+          const name = t.name || ''
+          // 排除名称中包含排除关键词的
+          return !excludeKeywords.some(k => name.includes(k))
+        })
+        tips.value = filtered.map(t => ({
           name: t.name,
           lng: t.location.lng,
           lat: t.location.lat,
           city: (t.district || '').replace(/省|市|自治区|特别行政区/g, ''),
           address: t.district + t.name
         }))
-        showDropdown.value = true
+        showDropdown.value = tips.value.length > 0
         await nextTick()
         updateDropdownPos()
       } catch {
@@ -102,12 +109,10 @@ function useKeyword() {
       city: found.name,
       address: found.desc
     })
-    keyword.value = ''
     tips.value = []
     ElMessage.success(`已选择城市「${name}」`)
   } else {
     emit('searchAttraction', { keyword: name, mode: 'confirm' })
-    keyword.value = ''
     tips.value = []
   }
   showDropdown.value = false
@@ -251,6 +256,11 @@ defineExpose({ quickPick })
   padding: 0 10px 0 14px;
   font-size: 16px;
   flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .ps-input {
   flex: 1;
@@ -266,27 +276,34 @@ defineExpose({ quickPick })
   color: #c0c4cc;
 }
 .ps-clear {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 22px;
+  min-width: 22px;
   height: 22px;
+  min-height: 22px;
+  aspect-ratio: 1 / 1;
   border: none;
   background: #c0c4cc;
   border-radius: 50%;
   color: #fff;
   font-size: 12px;
+  line-height: 1;
   cursor: pointer;
   margin-right: 4px;
   flex-shrink: 0;
 }
 .ps-clear:hover { background: #909399; }
 .ps-search-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
+  min-width: 44px;
   height: 40px;
+  min-height: 40px;
+  aspect-ratio: auto;
   border: none;
   background: var(--primary);
   border-radius: 0 7px 7px 0;
@@ -295,7 +312,15 @@ defineExpose({ quickPick })
   transition: background 0.15s;
 }
 .ps-search-btn:hover { background: var(--primary-dark); }
-.ps-search-icon { font-size: 16px; }
+.ps-search-icon {
+  font-size: 16px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 .ps-loading {
   display: inline-block;
   width: 16px;

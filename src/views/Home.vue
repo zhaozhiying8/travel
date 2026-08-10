@@ -7,7 +7,7 @@ import AmapKeyTip from '../components/AmapKeyTip.vue'
 import { popularCities } from '../utils/cities'
 import { hasAmapKey } from '../config'
 import { getAllCityImages } from '../utils/cityImages'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const trip = useTripStore()
@@ -51,6 +51,38 @@ function startPlanning() {
   if (!dateRange.value || !dateRange.value[0]) return ElMessage.warning('请选择出行日期')
   if (origin.value.name === destination.value.name) return ElMessage.warning('出发地与目的地不能相同')
 
+  // 如果已有行程，询问用户创建新行程还是替换当前行程
+  if (trip.trips.length > 0) {
+    ElMessageBox.confirm(
+      `已有 ${trip.trips.length} 个行程，如何处理？`,
+      '行程规划',
+      {
+        confirmButtonText: '创建新行程',
+        cancelButtonText: '替换当前行程',
+        type: 'warning'
+      }
+    ).then(() => {
+      // 用户选择创建新行程
+      trip.addTrip({
+        origin: origin.value,
+        destination: destination.value,
+        startDate: dateRange.value[0],
+        endDate: dateRange.value[1],
+        travelers: travelers.value
+      })
+      ElMessage.success(`已创建新行程: ${destination.value.name}`)
+      router.push('/destination')
+    }).catch(() => {
+      // 用户选择替换当前行程
+      doStartPlanning()
+    })
+  } else {
+    doStartPlanning()
+  }
+}
+
+// 执行开始规划（创建或更新行程）
+function doStartPlanning() {
   trip.setTrip({
     origin: origin.value,
     destination: destination.value,
@@ -75,15 +107,53 @@ function useMyLocation() {
   if (!navigator.geolocation) return ElMessage.warning('浏览器不支持定位')
   ElMessage.info('正在获取定位...')
   navigator.geolocation.getCurrentPosition(
-    pos => {
+    async pos => {
+      const lng = pos.coords.longitude
+      const lat = pos.coords.latitude
+
+      // 先设置一个临时的出发地
       origin.value = {
         name: '当前位置',
-        lng: pos.coords.longitude,
-        lat: pos.coords.latitude,
+        lng,
+        lat,
         city: '',
         address: '当前定位位置'
       }
-      ElMessage.success('已定位当前位置')
+
+      // 尝试通过高德逆地理编码获取城市名
+      try {
+        const response = await fetch(
+          `https://restapi.amap.com/v3/geocode/regeo?location=${lng},${lat}&key=${import.meta.env.VITE_AMAP_REST_KEY}&extensions=base`
+        )
+        const data = await response.json()
+        if (data.regeocode) {
+          const city = data.regeocode.address_component.city || data.regeocode.address_component.province || ''
+          const address = data.regeocode.formatted_address || ''
+
+          // 更新出发地信息
+          origin.value = {
+            name: city || '当前位置',
+            lng,
+            lat,
+            city,
+            address
+          }
+
+          // 保存当前定位到store，用于后续行程添加
+          trip.setCurrentLocation({
+            lng,
+            lat,
+            city,
+            address
+          })
+
+          ElMessage.success(`已定位: ${city || address}`)
+        }
+      } catch (e) {
+        // 逆地理编码失败，保持默认
+        trip.setCurrentLocation({ lng, lat, city: '', address: '当前定位位置' })
+        ElMessage.success('已定位当前位置')
+      }
     },
     () => ElMessage.error('定位失败,请手动选择出发地')
   )

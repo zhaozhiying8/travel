@@ -96,38 +96,117 @@ export async function searchAttractions(city, keyword = '景点', types = ['1100
       const pageSizeActual = Math.min(pageSize, 50) // 高德API最大50
       
       for (let page = 1; page <= maxPages; page++) {
-        const url = `https://restapi.amap.com/v3/place/text?key=${AMAP_REST_KEY}&keywords=${encodeURIComponent(keyword)}&city=${encodeURIComponent(city)}&offset=${pageSizeActual}&page=${page}&extensions=all`
+        // 构建URL参数
+        const params = new URLSearchParams()
+        params.set('key', AMAP_REST_KEY)
+        // keywords 不能为空，至少给一个空字符串或默认值
+        params.set('keywords', keyword || '')
+        if (city) {
+          params.set('city', city)
+          // 强制限制在指定城市范围内搜索，不扩散
+          params.set('citylimit', 'true')
+        }
+        params.set('offset', String(pageSizeActual))
+        params.set('page', String(page))
+        params.set('extensions', 'all')
+        // 重要：只有当types有值时才添加（避免与keywords冲突导致无结果）
+        // 根据项目经验：types与keywords同时存在可能冲突，当keywords为空时加types效果更好
+        if (types && types.length > 0) {
+          if (!keyword) {
+            // 无关键词时，用types精确过滤
+            params.set('types', types.join('|'))
+          } else {
+            // 有关键词时，如果是通配类关键词(景点/景区)也加types增强；精确关键词则不加避免冲突
+            const genericKeywords = ['景点', '景区', '旅游景区', '旅游景点', '']
+            if (genericKeywords.includes(keyword)) {
+              params.set('types', types.join('|'))
+            }
+          }
+        }
+        const url = `https://restapi.amap.com/v3/place/text?${params.toString()}`
         const res = await fetch(url, { method: 'GET' })
         const data = await res.json()
         
         if (data.status === '1' && data.pois && data.pois.length > 0) {
-          const mappedPois = data.pois.map(p => ({
-            name: p.name,
-            lng: p.location ? p.location.split(',')[0] : '',
-            lat: p.location ? p.location.split(',')[1] : '',
-            address: p.address || '',
-            tel: p.tel || '',
-            type: p.type || '',
-            pname: p.pname || '',
-            cityname: p.cityname || '',
-            adname: p.adname || '',
-            images: (p.photos || []).map(img => ({
-              url: img.url,
-              title: img.title || ''
-            })),
-            deep_info: p.biz_ext ? {
-              introduction: p.deep_info?.introduction || '',
-              opentime: p.biz_ext.opentime2 || p.biz_ext.open_time || '',
-              ticket_price: p.biz_ext.ticket_price || p.biz_ext.cost || '',
-              rating: p.biz_ext.rating || '',
-              recommend: p.recommend || ''
-            } : null,
-            biz_ext: p.biz_ext ? {
-              rating: p.biz_ext.rating || '',
-              cost: p.biz_ext.cost || ''
-            } : null,
-            id: p.id || ''
-          }))
+          const mappedPois = data.pois.map(p => {
+            // 提取门票价格 - 从多个可能的字段中获取
+            let ticketPrice = ''
+            const bizExt = p.biz_ext || {}
+            const deepInfo = p.deep_info || {}
+            
+            // 尝试从各种字段获取门票价格
+            if (bizExt.ticket_price) {
+              ticketPrice = typeof bizExt.ticket_price === 'string' ? bizExt.ticket_price : JSON.stringify(bizExt.ticket_price)
+            } else if (deepInfo.ticket_price) {
+              ticketPrice = typeof deepInfo.ticket_price === 'string' ? deepInfo.ticket_price : JSON.stringify(deepInfo.ticket_price)
+            } else if (bizExt.cost) {
+              ticketPrice = String(bizExt.cost)
+            } else if (bizExt.price) {
+              ticketPrice = String(bizExt.price)
+            }
+            
+            // 提取营业时间
+            let openTime = ''
+            if (bizExt.opentime2) {
+              openTime = bizExt.opentime2
+            } else if (bizExt.open_time) {
+              openTime = bizExt.open_time
+            } else if (deepInfo.opentime_week) {
+              openTime = deepInfo.opentime_week
+            } else if (deepInfo.opentime) {
+              openTime = deepInfo.opentime
+            }
+            
+            // 提取图片 - 从多个字段获取
+            const images = []
+            if (p.photos && p.photos.length > 0) {
+              for (const img of p.photos) {
+                if (img.url) images.push({ url: img.url, title: img.title || '' })
+              }
+            }
+            // 从image字段获取
+            if (p.images && Array.isArray(p.images)) {
+              for (const img of p.images) {
+                if (img.url && !images.find(i => i.url === img.url)) {
+                  images.push({ url: img.url, title: img.title || '' })
+                }
+              }
+            }
+            // 从deep_info.photos获取
+            if (deepInfo.photos && Array.isArray(deepInfo.photos)) {
+              for (const img of deepInfo.photos) {
+                const url = img.url || (img.href ? img.href : '')
+                if (url && !images.find(i => i.url === url)) {
+                  images.push({ url, title: img.title || '' })
+                }
+              }
+            }
+            
+            return {
+              name: p.name,
+              lng: p.location ? p.location.split(',')[0] : '',
+              lat: p.location ? p.location.split(',')[1] : '',
+              address: p.address || '',
+              tel: p.tel || '',
+              type: p.type || '',
+              pname: p.pname || '',
+              cityname: p.cityname || '',
+              adname: p.adname || '',
+              images,
+              deep_info: {
+                introduction: deepInfo.introduction || bizExt.introduction || '',
+                opentime: openTime,
+                ticket_price: ticketPrice,
+                rating: bizExt.rating || deepInfo.rating || '',
+                recommend: p.recommend || ''
+              },
+              biz_ext: {
+                rating: bizExt.rating || '',
+                cost: bizExt.cost || ticketPrice || ''
+              },
+              id: p.id || ''
+            }
+          })
           allResults.push(...mappedPois)
           
           // 如果当前页数量不足，说明没有更多结果
@@ -171,33 +250,60 @@ function searchAttractionsByJSAPI(city, keyword = '景点', types = ['110000'], 
       })
       placeSearch.search(keyword, (status, result) => {
         if (status === 'complete' && result && result.poiList && result.poiList.pois && result.poiList.pois.length > 0) {
-          const pois = result.poiList.pois.map(p => ({
-            name: p.name,
-            lng: p.location.lng,
-            lat: p.location.lat,
-            address: p.address || '',
-            tel: p.tel || '',
-            type: p.type || '',
-            pname: p.pname || '',
-            cityname: p.cityname || '',
-            adname: p.adname || '',
-            images: (p.images || []).map(img => ({
-              url: img.url,
-              title: img.title || ''
-            })),
-            deep_info: p.deep_info ? {
-              introduction: p.deep_info.introduction || '',
-              opentime: p.deep_info.opentime_week || p.deep_info.opentime || '',
-              ticket_price: p.deep_info.ticket_price || '',
-              rating: p.deep_info.rating || '',
-              recommend: p.deep_info.recommend || ''
-            } : null,
-            biz_ext: p.biz_ext ? {
-              rating: p.biz_ext.rating || '',
-              cost: p.biz_ext.cost || ''
-            } : null,
-            id: p.id || ''
-          }))
+          const pois = result.poiList.pois.map(p => {
+            // 提取门票价格
+            let ticketPrice = ''
+            const bizExt = p.biz_ext || {}
+            const deepInfo = p.deep_info || {}
+            
+            if (bizExt.ticket_price) {
+              ticketPrice = typeof bizExt.ticket_price === 'string' ? bizExt.ticket_price : JSON.stringify(bizExt.ticket_price)
+            } else if (deepInfo.ticket_price) {
+              ticketPrice = typeof deepInfo.ticket_price === 'string' ? deepInfo.ticket_price : JSON.stringify(deepInfo.ticket_price)
+            } else if (bizExt.cost) {
+              ticketPrice = String(bizExt.cost)
+            }
+            
+            // 提取图片
+            const images = []
+            if (p.photos && p.photos.length > 0) {
+              for (const img of p.photos) {
+                if (img.url) images.push({ url: img.url, title: img.title || '' })
+              }
+            }
+            if (p.deep_info && p.deep_info.photos && Array.isArray(p.deep_info.photos)) {
+              for (const img of p.deep_info.photos) {
+                if (img.url && !images.find(i => i.url === img.url)) {
+                  images.push({ url: img.url, title: img.title || '' })
+                }
+              }
+            }
+            
+            return {
+              name: p.name,
+              lng: p.location.lng,
+              lat: p.location.lat,
+              address: p.address || '',
+              tel: p.tel || '',
+              type: p.type || '',
+              pname: p.pname || '',
+              cityname: p.cityname || '',
+              adname: p.adname || '',
+              images,
+              deep_info: {
+                introduction: p.deep_info?.introduction || bizExt.introduction || '',
+                opentime: p.deep_info?.opentime_week || p.deep_info?.opentime || bizExt.opentime2 || bizExt.open_time || '',
+                ticket_price: ticketPrice,
+                rating: bizExt.rating || p.deep_info?.rating || '',
+                recommend: p.recommend || ''
+              },
+              biz_ext: {
+                rating: bizExt.rating || '',
+                cost: bizExt.cost || ticketPrice || ''
+              },
+              id: p.id || ''
+            }
+          })
           resolve(pois)
         } else {
           // 完整的错误信息

@@ -98,7 +98,15 @@ function go(path) {
 }
 .nav-item:hover { background: #fff3ee; color: var(--primary); }
 .nav-item.active { background: var(--primary); color: #fff; }
-.nav-icon { font-size: 16px; }
+.nav-icon {
+  font-size: 16px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .badge {
   background: #ff4d4f;
   color: #fff;
@@ -106,19 +114,37 @@ function go(path) {
   border-radius: 10px;
   padding: 1px 6px;
   margin-left: 2px;
+  flex-shrink: 0;
 }
 @media (max-width: 640px) {
   .header-inner { padding: 0 12px; height: 56px; }
-  .logo-icon { font-size: 24px; }
+  .logo-icon { font-size: 24px; width: 28px; height: 28px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
   .logo-text { font-size: 16px; }
   .nav { gap: 2px; }
-  .nav-item { padding: 8px 10px; min-height: 44px; min-width: 44px; justify-content: center; }
+  .nav-item {
+    padding: 8px 10px;
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+    flex-shrink: 0;
+    display: inline-flex;
+  }
+  .nav-icon {
+    font-size: 18px;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
   .nav-item span:not(.nav-icon):not(.badge) { display: none; }
   .logo-text small { display: none; }
   .badge { font-size: 10px; padding: 1px 5px; }
 }
 @media (max-width: 768px) {
-  .nav-item { padding: 8px 10px; }
+  .nav-item { padding: 8px 10px; flex-shrink: 0; display: inline-flex; }
+  .nav-icon { width: 20px; height: 20px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
   .logo-text { font-size: 18px; }
 }
 </style>

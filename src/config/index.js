@@ -10,4 +10,4 @@ export const hasAmapKey = !!AMAP_KEY
 
 // 景点数据缓存key
 export const ATTRACTION_CACHE_KEY = 'travel_attractions_cache'
-export const ATTRACTION_CACHE_DURATION = 24 * 60 * 60 * 1000 // 24小时缓存
+export const ATTRACTION_CACHE_DURATION = 1 * 60 * 60 * 1000 // 1小时缓存（缩短以加速获取新数据）

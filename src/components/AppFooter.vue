@@ -6,7 +6,7 @@
   <footer class="app-footer">
     <div class="footer-inner">
       <span>🧳 悠游 · 让每一次出行都从容有序</span>
-      <span class="tip">地图服务由高德地图提供 · 数据仅供参考</span>
+      <!-- <span class="tip">地图服务由高德地图提供 · 数据仅供参考</span> -->
     </div>
   </footer>
 </template>

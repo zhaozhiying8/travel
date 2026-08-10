@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTripStore } from '../store/trip'
+import { ElMessage } from 'element-plus'
 import AmapKeyTip from '../components/AmapKeyTip.vue'
 import PlaceSearch from '../components/PlaceSearch.vue'
 import { hasAmapKey } from '../config'
@@ -9,7 +10,6 @@ import { popularCities } from '../utils/cities'
 import { getAttractionImage } from '../utils/format'
 import { getCityFallbackImage } from '../utils/cityImages'
 import { fetchCityAttractions, searchAttractionsByKeyword } from '../services/attractionService'
-import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const trip = useTripStore()
@@ -56,6 +56,130 @@ const categoryTabs = [
   { value: 'food', label: '美食休闲', icon: '🍜' }
 ]
 
+// 获取地址摘要（约10个字，用于卡片显示）
+function getAddrDesc(attr) {
+  const rawAddr = attr.address || attr.adname || ''
+  const addr = typeof rawAddr === 'string' ? rawAddr : String(rawAddr || '')
+  if (!addr) return ''
+  // 去除省份/城市前缀（卡片空间有限）
+  let short = addr.replace(/^[^市省县区]+[市省县区]/, '').trim()
+  // 如果前缀去掉后太短或为空，用原地址
+  if (short.length < 3) short = addr
+  // 截取约10个字
+  if (short.length > 10) short = short.substring(0, 10) + '…'
+  return short
+}
+
+// 将高德类型编码转为简短描述（20字以内）
+function getAttrDesc(attr) {
+  const type = attr.type || ''
+  const name = attr.name || ''
+  
+  // 如果没有类型信息，返回空
+  if (!type) return ''
+  
+  // 定义类型映射关系
+  const typeMap = {
+    '风景名胜': '景区',
+    '红色景区': '红色景点',
+    '世界遗产': '世界遗产',
+    '国家级景点': '国家级景区',
+    '风景名胜区': '景区',
+    '公园广场': '公园广场',
+    '城市广场': '城市广场',
+    '博物馆': '博物馆',
+    '美术馆': '美术馆',
+    '科技馆': '科技馆',
+    '图书馆': '图书馆',
+    '纪念馆': '纪念馆',
+    '遗址': '遗址',
+    '故居': '故居',
+    '寺庙道观': '寺庙',
+    '教堂': '教堂',
+    '清真寺': '清真寺',
+    '古城': '古城',
+    '古镇': '古镇',
+    '民俗村': '民俗村',
+    '园林': '园林',
+    '书院': '书院',
+    '塔': '古塔',
+    '楼': '名楼',
+    '阁': '阁',
+    '石窟': '石窟',
+    '陵园': '陵园',
+    '陵墓': '陵墓',
+    '祠堂': '祠堂',
+    '海滨': '海滨',
+    '温泉': '温泉',
+    '湖泊': '湖泊',
+    '山岳': '山岳',
+    '瀑布': '瀑布',
+    '草原': '草原',
+    '森林': '森林',
+    '湿地': '湿地',
+    '峡谷': '峡谷',
+    '岛屿': '岛屿',
+    '沙滩': '沙滩',
+    '游乐园': '游乐园',
+    '主题乐园': '主题乐园',
+    '动物园': '动物园',
+    '植物园': '植物园',
+    '水族馆': '水族馆',
+    '剧场': '剧场',
+    '剧院': '剧院',
+    '体育场': '体育场',
+    '体育馆': '体育馆',
+    '大学城': '大学城',
+    '大学': '大学',
+    '特色商业街': '商业街',
+    '步行街': '步行街',
+    '小吃街': '美食街',
+    '美食街': '美食街',
+    '夜市': '夜市',
+    '酒吧街': '酒吧街',
+    '茶馆': '茶馆',
+    '咖啡馆': '咖啡馆',
+    '餐厅': '餐厅',
+    '美食': '美食',
+    '现代建筑': '现代建筑',
+    '电视塔': '电视塔',
+    '大桥': '大桥',
+    '中心': '中心',
+    '公园': '公园',
+    '广场': '广场'
+  }
+  
+  // 从类型字符串中提取关键描述
+  const parts = type.split('|').flatMap(p => p.split(';'))
+  const uniqueParts = [...new Set(parts.filter(p => p && p !== '风景名胜' && p !== '科教文化服务' && p !== '体育休闲服务' && p !== '购物服务' && p !== '餐饮服务' && p !== '交通设施服务' && p !== '住宿服务'))]
+  
+  // 转换为简短描述
+  const descParts = []
+  for (const part of uniqueParts) {
+    if (typeMap[part]) {
+      descParts.push(typeMap[part])
+    } else if (part.length <= 4) {
+      descParts.push(part)
+    }
+    if (descParts.length >= 2) break
+  }
+  
+  // 如果没有匹配到，尝试从原始类型中提取
+  if (descParts.length === 0) {
+    // 简单处理：取第一段最后一个非空值
+    const firstPart = parts.find(p => p && p.length <= 6)
+    if (firstPart) return firstPart
+    return ''
+  }
+  
+  // 拼接描述，控制在20字以内
+  let desc = descParts.join('·')
+  if (desc.length > 20) {
+    desc = desc.substring(0, 18) + '...'
+  }
+  return desc
+}
+
 // 根据景点类型分类
 function categorizeAttraction(attr) {
   const type = (attr.type || '') + ' ' + (attr.deep_info?.introduction || '')
@@ -87,6 +211,50 @@ const isPopularCityMode = computed(() => {
   return popularCities.some(c => c.name === name)
 })
 
+// 从用户输入中提取真实城市名（处理「邯郸站/邯郸机场/邯郸东火车站」等交通枢纽输入）
+function extractCityName(input) {
+  if (!input) return ''
+  // 去掉交通枢纽后缀，只保留前面的城市/区域部分
+  return input
+    .replace(/(火车|高铁|动车|汽车|客运|长途)?站(北|南|东|西)?$/i, '')
+    .replace(/(火车|高铁|动车)?站$/i, '')
+    .replace(/(国际|国内)?机场(|T1|T2|T3|1号|2号|3号)?航站楼$/i, '')
+    .replace(/(北|南|东|西)?(机场|火车站|高铁站|汽车站|客运站)$/i, '')
+    .replace(/(北|南|东|西)站?$/i, match => match.length <= 2 ? '' : match.slice(0, -1))
+    .trim()
+}
+
+// 判断关键词是否像城市名（含"市""省""县""区"等后缀，或看起来像行政区划）
+function looksLikeCityName(name) {
+  if (!name) return false
+  // 1. 包含行政区划后缀
+  if (/(市|省|县|区|自治州|自治县|特别行政区|盟|旗)$/.test(name)) return true
+  // 2. 交通枢纽后缀：邯郸站 / 邯郸机场 / 邯郸东站 / 邯郸东火车站 → 视为城市意图
+  if (/(站|机场|火车站|高铁站|汽车站|客运站|航站楼)$/.test(name)) {
+    const city = extractCityName(name)
+    // 提取出的部分像城市名就认可
+    if (city && (city.length >= 2 && city.length <= 4)) return true
+  }
+  // 3. 名称长度在2-4字之间（大多数城市名长度），且不含明显的景点关键词
+  if (name.length >= 2 && name.length <= 4) {
+    const attractionKeywords = ['景区', '景点', '公园', '花园', '园林', '名胜', '博物馆', '展览馆', '美术馆', '科技馆', '纪念馆', '图书馆', '动物园', '植物园', '水族馆', '海洋馆', '温泉', '度假区', '度假村', '寺庙', '教堂', '清真寺', '道观', '佛寺', '陵园', '遗址', '乐园', '古镇', '古城', '瀑布', '峡谷', '山峰', '海岛', '海滨']
+    if (!attractionKeywords.some(k => name.includes(k))) {
+      return true
+    }
+  }
+  return false
+}
+
+// 获取应该用于「城市模式」搜索的城市名（优先从交通枢纽词提取，否则用原始关键词）
+function getCityForSearch(rawKeyword) {
+  if (!rawKeyword) return ''
+  if (/(站|机场|火车站|高铁站|汽车站|客运站|航站楼)$/.test(rawKeyword)) {
+    const extracted = extractCityName(rawKeyword)
+    if (extracted && extracted.length >= 2) return extracted
+  }
+  return rawKeyword
+}
+
 // 加载热门景点(从高德API获取真实数据)
 async function loadAttractions() {
   if (!destination.value) return
@@ -95,38 +263,36 @@ async function loadAttractions() {
     return
   }
   
-  // 检查是否为景点搜索模式（非热门城市）
-  if (!isPopularCityMode.value) {
-    // 景点搜索模式：直接搜索输入的关键词
+  const keyword = destination.value?.name || ''
+  // 检查：如果是热门城市模式，或关键词看起来像城市名，则按"城市内搜索景点"处理
+  const shouldSearchAsCity = isPopularCityMode.value || looksLikeCityName(keyword)
+  // 提取真实城市名（邯郸站→邯郸、邯郸东火车站→邯郸东）
+  const cityKeyword = getCityForSearch(keyword)
+  
+  if (shouldSearchAsCity) {
+    // 城市模式：在该城市范围内搜索所有景点（一次性加载）
     loading.value = true
     loadError.value = ''
+    attractions.value = []
     try {
-      const keyword = destination.value?.name || ''
-      // 先尝试用"全国"范围搜索
-      let pois = await searchAttractionsByKeyword('全国', keyword)
-      // 如果结果太少，尝试用关键词本身作为城市名搜索
-      if (pois.length < 3) {
-        const altPois = await searchAttractionsByKeyword(keyword, keyword)
-        // 合并去重
-        const existingNames = new Set(pois.map(p => p.name))
-        for (const p of altPois) {
+      const result = await fetchCityAttractions(cityKeyword)
+      attractions.value = result.map(a => ({ ...a, city: a.city || a.adname || cityKeyword }))
+      // 如果结果太少，补充全国搜索
+      if (attractions.value.length < 5) {
+        const extraPois = await searchAttractionsByKeyword('全国', keyword)
+        const existingNames = new Set(attractions.value.map(p => p.name))
+        for (const p of extraPois) {
           if (!existingNames.has(p.name)) {
-            pois.push(p)
+            attractions.value.push({ ...p, city: p.city || p.adname || cityKeyword })
             existingNames.add(p.name)
           }
         }
       }
-      attractions.value = pois
-      // 自动显示搜索结果
-      searchKeyword.value = keyword
-      searchResults.value = pois
-      isSearching.value = pois.length > 0
-      showSearchDropdown.value = pois.length > 0
-      if (pois.length === 0) {
-        loadError.value = `未找到「${keyword}」的相关景点，请尝试其他关键词`
+      if (attractions.value.length === 0) {
+        loadError.value = `高德地图未返回「${cityKeyword}」的景点数据，请确认城市名是否正确`
       }
     } catch (e) {
-      loadError.value = e.message || '搜索景点失败'
+      loadError.value = e.message || '加载景点数据失败'
       attractions.value = []
     } finally {
       loading.value = false
@@ -134,16 +300,35 @@ async function loadAttractions() {
     return
   }
   
-  // 热门城市模式：加载城市热门景点
+  // 真正的景点搜索模式（关键词像具体景点名）：直接搜索输入的关键词
   loading.value = true
   loadError.value = ''
   try {
-    attractions.value = await fetchCityAttractions(cityName.value)
-    if (attractions.value.length === 0) {
-      loadError.value = `高德地图未返回「${cityName.value}」的景点数据，请确认城市名是否正确`
+    // 先尝试用"全国"范围搜索
+    let pois = await searchAttractionsByKeyword('全国', keyword)
+    // 如果结果太少，尝试用关键词本身作为城市名搜索（可能是小地名/区县）
+    if (pois.length < 3) {
+      const altPois = await searchAttractionsByKeyword(keyword, keyword)
+      // 合并去重
+      const existingNames = new Set(pois.map(p => p.name))
+      for (const p of altPois) {
+        if (!existingNames.has(p.name)) {
+          pois.push(p)
+          existingNames.add(p.name)
+        }
+      }
+    }
+    attractions.value = pois
+    // 自动显示搜索结果
+    searchKeyword.value = keyword
+    searchResults.value = pois
+    isSearching.value = pois.length > 0
+    showSearchDropdown.value = pois.length > 0
+    if (pois.length === 0) {
+      loadError.value = `未找到「${keyword}」的相关景点，请尝试其他关键词`
     }
   } catch (e) {
-    loadError.value = e.message || '加载景点数据失败'
+    loadError.value = e.message || '搜索景点失败'
     attractions.value = []
   } finally {
     loading.value = false
@@ -180,6 +365,22 @@ async function onSearchAttraction({ keyword, mode }) {
     showSearchDropdown.value = false
     return
   }
+  
+  // 如果关键词看起来像城市名，就把它设置为目的地（切换到城市模式搜索该城市内的景点）
+  if (looksLikeCityName(keyword)) {
+    // 先判断是否是热门城市
+    const found = popularCities.find(c => c.name === keyword || c.name.includes(keyword))
+    if (found) {
+      destination.value = { name: found.name, lng: found.lng, lat: found.lat, city: found.name, address: found.desc }
+    } else {
+      // 非热门城市，直接设置为 destination（loadAttractions 会按城市模式处理）
+      destination.value = { name: keyword, lng: '', lat: '', city: keyword, address: keyword }
+    }
+    // 清除搜索状态，让城市模式展示结果
+    clearSearch()
+    return
+  }
+  
   searchKeyword.value = keyword
   searchLoading.value = true
   try {
@@ -189,7 +390,11 @@ async function onSearchAttraction({ keyword, mode }) {
       const pois = await searchAttractionsByKeyword(searchScope, keyword)
       // 防止过期请求覆盖新状态
       if (myRequestId !== searchRequestId) return
-      searchResults.value = pois
+      // 确保每个搜索结果景点都有city字段：优先使用poi的adname，其次用搜索范围城市，最后用当前城市
+      searchResults.value = pois.map(p => ({
+        ...p,
+        city: p.city || p.adname || (isPopularCityMode.value ? cityName.value : '')
+      }))
       isSearching.value = pois.length > 0
       showSearchDropdown.value = pois.length > 0
     } else {
@@ -274,6 +479,12 @@ function getImageUrlWithRetry(attr) {
   return url
 }
 
+// 查看景点详情
+function goToDetail(attr) {
+  trip.selectAttraction({ ...attr, city: cityName.value })
+  router.push({ path: '/attraction', query: { name: attr.name } })
+}
+
 // 选中景点 -> 进入地图导航
 function goToMap(attr) {
   trip.selectAttraction({ ...attr, city: cityName.value })
@@ -286,17 +497,77 @@ function goToNearby(attr) {
   router.push('/nearby')
 }
 
-// 加入行程
+// 加入行程 - 弹出日期选择对话框
+const showAddDateDialog = ref(false)
+const pendingAttraction = ref(null)
+const addDateForm = ref({
+  startDate: '',
+  endDate: ''
+})
+
 function addToItinerary(attr) {
+  pendingAttraction.value = attr
+  addDateForm.value = {
+    startDate: trip.startDate || '',
+    endDate: trip.endDate || trip.startDate || ''
+  }
+  showAddDateDialog.value = true
+}
+
+function confirmAddToItinerary() {
+  if (!addDateForm.value.startDate) {
+    ElMessage.warning('请选择开始日期')
+    return
+  }
+  if (!addDateForm.value.endDate) {
+    ElMessage.warning('请选择结束日期')
+    return
+  }
+  if (new Date(addDateForm.value.endDate) < new Date(addDateForm.value.startDate)) {
+    ElMessage.warning('结束日期不能早于开始日期')
+    return
+  }
+  if (!pendingAttraction.value) return
+  const attr = pendingAttraction.value
+
+  // 如果当前行程没有设置出发地，自动设置为当前定位的城市
+  if (!trip.origin) {
+    if (trip.currentLocation && trip.currentLocation.city) {
+      // 使用当前定位的城市作为出发地
+      trip.setTrip({
+        origin: {
+          name: trip.currentLocation.city,
+          lng: trip.currentLocation.lng,
+          lat: trip.currentLocation.lat,
+          city: trip.currentLocation.city
+        }
+      })
+    } else if (cityName.value) {
+      // 备选：使用当前浏览的城市
+      trip.setTrip({
+        origin: {
+          name: cityName.value,
+          lng: destination.value?.lng,
+          lat: destination.value?.lat,
+          city: cityName.value
+        }
+      })
+    }
+  }
+
   trip.addPlan({
     title: attr.name,
     type: 'attraction',
     destination: cityName.value,
     attraction: { ...attr, city: cityName.value },
-    date: trip.startDate || '',
+    startDate: addDateForm.value.startDate,
+    endDate: addDateForm.value.endDate,
+    date: addDateForm.value.startDate,
     note: attr.deep_info?.introduction || attr.address || ''
   })
-  ElMessage.success(`已将「${attr.name}」加入行程`)
+  ElMessage.success(`已将「${attr.name}」加入行程 (${addDateForm.value.startDate} ~ ${addDateForm.value.endDate})`)
+  showAddDateDialog.value = false
+  pendingAttraction.value = null
 }
 
 // 收藏
@@ -355,7 +626,7 @@ function setDestination(city) {
 
       <div v-if="searchLoading" class="loading-box">
         <span class="spinner"></span>
-        正在从高德地图搜索景点...
+        正在搜索相关景点...
       </div>
 
       <div v-else-if="!hasAmapKey" class="empty-tip">
@@ -364,7 +635,7 @@ function setDestination(city) {
       </div>
 
       <div v-else-if="displayAttractions.length" class="attr-grid">
-        <div v-for="(attr, i) in displayAttractions" :key="i" class="attr-card">
+        <div v-for="(attr, i) in displayAttractions" :key="i" class="attr-card" @click="goToDetail(attr)">
           <div class="attr-img-wrap">
             <img 
               v-if="getImageUrlWithRetry(attr) && !imgErrors[attr.name]" 
@@ -380,25 +651,24 @@ function setDestination(city) {
             <button
               v-if="imgErrors[attr.name] && imgRetryCount[attr.name] <= 2 && getImageUrl(attr)"
               class="retry-img-btn"
-              @click="() => { imgErrors[attr.name] = false }"
+              @click.stop="() => { imgErrors[attr.name] = false }"
             >🔄</button>
             <button
               class="fav-btn"
               :class="{ active: trip.isFavorite(attr.name) }"
-              @click="toggleFav(attr)"
+              @click.stop="toggleFav(attr)"
             >{{ trip.isFavorite(attr.name) ? '❤️' : '🤍' }}</button>
-            <div v-if="attr.biz_ext?.rating || attr.deep_info?.rating" class="rating-tag">⭐ {{ attr.biz_ext?.rating || attr.deep_info?.rating }}</div>
+            <div class="rating-tag" :class="{ 'no-rating': !(attr.biz_ext?.rating > 0) && !(attr.deep_info?.rating > 0) }">
+              {{ (attr.biz_ext?.rating > 0 || attr.deep_info?.rating > 0) ? '⭐ ' + (attr.biz_ext?.rating || attr.deep_info?.rating) : '暂无评分' }}
+            </div>
           </div>
           <div class="attr-body">
             <h3 class="attr-name">{{ attr.name }}</h3>
-            <p v-if="attr.deep_info?.introduction" class="attr-desc">{{ attr.deep_info.introduction }}</p>
-            <p v-else class="attr-desc">{{ attr.type || attr.address || '暂无介绍' }}</p>
             <div class="attr-meta">
-              <span v-if="attr.deep_info?.ticket_price" class="meta-item ticket" title="门票">🎫 {{ attr.deep_info.ticket_price }}</span>
-              <span v-if="attr.deep_info?.opentime" class="meta-item time" title="开放时间">🕐 {{ attr.deep_info.opentime }}</span>
-              <span v-if="attr.address" class="meta-item addr" title="地址">📍 {{ attr.address }}</span>
+              <span v-if="getAttrDesc(attr)" class="attr-type-tag">{{ getAttrDesc(attr) }}</span>
+              <span v-if="getAddrDesc(attr)" class="attr-addr">📍 {{ getAddrDesc(attr) }}</span>
             </div>
-            <div class="attr-actions">
+            <div class="attr-actions" @click.stop>
               <button class="act-btn primary" @click="goToMap(attr)">🗺️ 导航</button>
               <button class="act-btn" @click="goToNearby(attr)">🏨 附近</button>
               <button class="act-btn add" @click="addToItinerary(attr)">＋ 行程</button>
@@ -453,12 +723,22 @@ function setDestination(city) {
           <template v-if="!isPopularCityMode">🎯 「{{ destination.name }}」相关景点</template>
           <template v-else>🎯 {{ cityName }} 热门景点</template>
         </h2>
-        <span class="count">共 {{ displayAttractions.length }} 个景点</span>
+        <div class="section-head-right">
+          <span class="count">共 {{ displayAttractions.length }} 个景点</span>
+          <button 
+            class="refresh-btn" 
+            @click="retryLoad" 
+            :disabled="loading"
+            title="强制刷新景点数据"
+          >
+            🔄{{ loading ? ' 刷新中...' : ' 刷新' }}
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="loading-box">
         <span class="spinner"></span>
-        正在从高德地图获取真实景点数据...
+        正在搜索相关景点...
       </div>
 
       <!-- 无Key提示 -->
@@ -477,7 +757,7 @@ function setDestination(city) {
 
       <!-- 景点网格 -->
       <div v-else-if="displayAttractions.length" class="attr-grid">
-        <div v-for="(attr, i) in displayAttractions" :key="i" class="attr-card">
+        <div v-for="(attr, i) in displayAttractions" :key="i" class="attr-card" @click="goToDetail(attr)">
           <div class="attr-img-wrap">
             <img 
               v-if="getImageUrlWithRetry(attr) && !imgErrors[attr.name]" 
@@ -493,25 +773,24 @@ function setDestination(city) {
             <button
               v-if="imgErrors[attr.name] && imgRetryCount[attr.name] <= 2 && getImageUrl(attr)"
               class="retry-img-btn"
-              @click="() => { imgErrors[attr.name] = false }"
+              @click.stop="() => { imgErrors[attr.name] = false }"
             >🔄</button>
             <button
               class="fav-btn"
               :class="{ active: trip.isFavorite(attr.name) }"
-              @click="toggleFav(attr)"
+              @click.stop="toggleFav(attr)"
             >{{ trip.isFavorite(attr.name) ? '❤️' : '🤍' }}</button>
-            <div v-if="attr.biz_ext?.rating || attr.deep_info?.rating" class="rating-tag">⭐ {{ attr.biz_ext?.rating || attr.deep_info?.rating }}</div>
+            <div class="rating-tag" :class="{ 'no-rating': !(attr.biz_ext?.rating > 0) && !(attr.deep_info?.rating > 0) }">
+              {{ (attr.biz_ext?.rating > 0 || attr.deep_info?.rating > 0) ? '⭐ ' + (attr.biz_ext?.rating || attr.deep_info?.rating) : '暂无评分' }}
+            </div>
           </div>
           <div class="attr-body">
             <h3 class="attr-name">{{ attr.name }}</h3>
-            <p v-if="attr.deep_info?.introduction" class="attr-desc">{{ attr.deep_info.introduction }}</p>
-            <p v-else class="attr-desc">{{ attr.type || attr.address || '暂无介绍' }}</p>
             <div class="attr-meta">
-              <span v-if="attr.deep_info?.ticket_price" class="meta-item ticket" title="门票">🎫 {{ attr.deep_info.ticket_price }}</span>
-              <span v-if="attr.deep_info?.opentime" class="meta-item time" title="开放时间">🕐 {{ attr.deep_info.opentime }}</span>
-              <span v-if="attr.address" class="meta-item addr" title="地址">📍 {{ attr.address }}</span>
+              <span v-if="getAttrDesc(attr)" class="attr-type-tag">{{ getAttrDesc(attr) }}</span>
+              <span v-if="getAddrDesc(attr)" class="attr-addr">📍 {{ getAddrDesc(attr) }}</span>
             </div>
-            <div class="attr-actions">
+            <div class="attr-actions" @click.stop>
               <button class="act-btn primary" @click="goToMap(attr)">🗺️ 导航</button>
               <button class="act-btn" @click="goToNearby(attr)">🏨 附近</button>
               <button class="act-btn add" @click="addToItinerary(attr)">＋ 行程</button>
@@ -525,6 +804,33 @@ function setDestination(city) {
         <p>暂未找到该城市的景点，换个目的地试试</p>
       </div>
     </template>
+
+    <!-- 添加到行程 - 日期选择对话框 -->
+    <el-dialog v-model="showAddDateDialog" :title="pendingAttraction ? `添加「${pendingAttraction.name}」到行程` : '添加到行程'" width="420px" :close-on-click-modal="false">
+      <div class="add-date-dialog">
+        <div class="dialog-tip">请选择该景点在行程中的日期</div>
+        <el-form label-width="90px">
+          <el-form-item label="开始日期" required>
+            <el-date-picker v-model="addDateForm.startDate" type="date" placeholder="选择开始日期" value-format="YYYY-MM-DD" style="width:100%" />
+          </el-form-item>
+          <el-form-item label="结束日期" required>
+            <el-date-picker v-model="addDateForm.endDate" type="date" placeholder="选择结束日期" value-format="YYYY-MM-DD" style="width:100%" />
+          </el-form-item>
+          <div class="dialog-preview" v-if="addDateForm.startDate">
+            <span v-if="addDateForm.endDate && addDateForm.startDate !== addDateForm.endDate">
+              📅 {{ addDateForm.startDate }} ~ {{ addDateForm.endDate }}（共 {{ Math.max(1, Math.round((new Date(addDateForm.endDate) - new Date(addDateForm.startDate)) / 86400000) + 1) }} 天）
+            </span>
+            <span v-else>📅 {{ addDateForm.startDate }}（单日行程）</span>
+          </div>
+        </el-form>
+      </div>
+      <template #footer>
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+          <button class="btn-ghost" @click="showAddDateDialog = false; pendingAttraction = null">取消</button>
+          <button class="btn-primary" @click="confirmAddToItinerary">确认添加</button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -661,17 +967,53 @@ function setDestination(city) {
 
 .section-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
 }
 .section-head h2 { font-size: 22px; font-weight: 800; }
+.section-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
 .count { font-size: 13px; color: var(--text-light); }
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border: 1px solid #e3e6ef;
+  background: #fff;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.2s;
+  aspect-ratio: auto;
+  min-width: auto;
+  min-height: auto;
+}
+.refresh-btn:hover:not(:disabled) {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .loading-box {
   text-align: center;
   padding: 60px;
   color: var(--text-light);
+}
+.loading-more {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-light);
+  font-size: 14px;
 }
 .spinner {
   display: inline-block;
@@ -683,6 +1025,11 @@ function setDestination(city) {
   animation: spin 0.8s linear infinite;
   margin-right: 8px;
   vertical-align: middle;
+}
+.spinner.small {
+  width: 14px;
+  height: 14px;
+  border-width: 1.5px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -699,6 +1046,7 @@ function setDestination(city) {
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 .attr-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
 .attr-img-wrap {
@@ -734,17 +1082,22 @@ function setDestination(city) {
   left: 50%;
   transform: translate(-50%, -50%);
   width: 40px;
+  min-width: 40px;
   height: 40px;
+  min-height: 40px;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
   border: none;
   cursor: pointer;
   font-size: 20px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s;
+  line-height: 1;
 }
 .retry-img-btn:hover {
   transform: translate(-50%, -50%) scale(1.1);
@@ -755,12 +1108,20 @@ function setDestination(city) {
   top: 10px;
   right: 10px;
   width: 36px;
+  min-width: 36px;
   height: 36px;
+  min-height: 36px;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   background: rgba(255,255,255,0.9);
   border: none;
   cursor: pointer;
   font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
   backdrop-filter: blur(4px);
 }
 .fav-btn.active { background: #fff; }
@@ -775,39 +1136,37 @@ function setDestination(city) {
   font-size: 12px;
   font-weight: 600;
 }
+.rating-tag.no-rating {
+  color: #ccc;
+  font-weight: 400;
+}
 .attr-body { padding: 14px; flex: 1; display: flex; flex-direction: column; }
 .attr-name { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
-.attr-desc {
-  font-size: 13px;
-  color: var(--text-light);
-  line-height: 1.5;
-  margin-bottom: 8px;
-  flex: 1;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 .attr-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 10px;
-}
-.meta-item {
   font-size: 12px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: #f5f7fa;
   color: var(--text-light);
-  white-space: nowrap;
+  line-height: 1.5;
+}
+.attr-type-tag {
+  background: #fff3ee;
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.attr-addr {
+  color: #666;
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   max-width: 100%;
 }
-.meta-item.ticket { background: #fff3ee; color: var(--primary); }
-.meta-item.time { background: #e8f5e9; color: #2e7d32; }
-.meta-item.addr { background: #e3f2fd; color: #1565c0; max-width: 100%; }
 .attr-actions { display: flex; gap: 8px; }
 .act-btn {
   flex: 1;
@@ -865,8 +1224,6 @@ function setDestination(city) {
   .attr-grid { grid-template-columns: 1fr; gap: 14px; }
   .attr-img-wrap { height: 160px; }
   .attr-name { font-size: 16px; }
-  .attr-meta { flex-direction: column; gap: 4px; }
-  .meta-item { max-width: 100%; white-space: normal; }
   .attr-actions { flex-wrap: wrap; }
   .act-btn { flex: 1 1 calc(50% - 4px); padding: 10px 0; font-size: 14px; min-height: 44px; }
 }
@@ -874,5 +1231,26 @@ function setDestination(city) {
   .dest-banner { height: 180px; }
   .banner-title { font-size: 30px; }
   .attr-grid { grid-template-columns: 1fr; }
+}
+
+/* 添加到行程对话框 */
+.add-date-dialog { padding: 8px 0; }
+.dialog-tip {
+  color: var(--text-light, #909399);
+  font-size: 13px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--bg-soft, #f5f7fa);
+  border-radius: 8px;
+}
+.dialog-preview {
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #ff6b3520, #ff8f5e20);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary, #ff6b35);
+  text-align: center;
 }
 </style>
