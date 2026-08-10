@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTripStore } from '../store/trip'
 import { ElMessage } from 'element-plus'
@@ -10,6 +10,18 @@ import { popularCities } from '../utils/cities'
 import { getAttractionImage } from '../utils/format'
 import { getCityFallbackImage } from '../utils/cityImages'
 import { fetchCityAttractions, searchAttractionsByKeyword } from '../services/attractionService'
+
+// 移动端检测
+const isMobile = ref(window.innerWidth < 768)
+function handleResize() {
+  isMobile.value = window.innerWidth < 768
+}
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
 
 const router = useRouter()
 const trip = useTripStore()
@@ -806,10 +818,17 @@ function setDestination(city) {
     </template>
 
     <!-- 添加到行程 - 日期选择对话框 -->
-    <el-dialog v-model="showAddDateDialog" :title="pendingAttraction ? `添加「${pendingAttraction.name}」到行程` : '添加到行程'" width="420px" :close-on-click-modal="false">
+    <el-dialog
+      v-model="showAddDateDialog"
+      :title="pendingAttraction ? `添加「${pendingAttraction.name}」到行程` : '添加到行程'"
+      width="380px"
+      :close-on-click-modal="false"
+      class="mobile-dialog"
+      :top="'5vh'"
+    >
       <div class="add-date-dialog">
         <div class="dialog-tip">请选择该景点在行程中的日期</div>
-        <el-form label-width="90px">
+        <el-form :label-width="isMobile ? '70px' : '90px'" label-position="left">
           <el-form-item label="开始日期" required>
             <el-date-picker v-model="addDateForm.startDate" type="date" placeholder="选择开始日期" value-format="YYYY-MM-DD" style="width:100%" />
           </el-form-item>
@@ -825,7 +844,7 @@ function setDestination(city) {
         </el-form>
       </div>
       <template #footer>
-        <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <div class="dialog-footer">
           <button class="btn-ghost" @click="showAddDateDialog = false; pendingAttraction = null">取消</button>
           <button class="btn-primary" @click="confirmAddToItinerary">确认添加</button>
         </div>
@@ -1252,5 +1271,73 @@ function setDestination(city) {
   font-weight: 500;
   color: var(--primary, #ff6b35);
   text-align: center;
+}
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+/* 弹窗移动端适配 */
+:deep(.mobile-dialog) {
+  .el-dialog {
+    width: 92% !important;
+    max-width: 380px;
+    margin: 5vh auto !important;
+  }
+  .el-dialog__header {
+    padding: 14px 16px;
+    .el-dialog__title {
+      font-size: 16px;
+    }
+  }
+  .el-dialog__body {
+    padding: 12px 16px;
+  }
+  .el-dialog__footer {
+    padding: 10px 16px 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  :deep(.mobile-dialog) {
+    .el-dialog {
+      width: 92% !important;
+      margin: 3vh auto !important;
+    }
+    .el-dialog__header {
+      padding: 12px 14px;
+      .el-dialog__title {
+        font-size: 15px;
+      }
+    }
+    .el-dialog__body {
+      padding: 10px 14px;
+    }
+    .el-dialog__footer {
+      padding: 8px 14px 14px;
+    }
+    .el-dialog__footer .dialog-footer {
+      justify-content: center;
+      button {
+        flex: 1;
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+    }
+  }
+  .add-date-dialog {
+    padding: 0;
+  }
+  .dialog-tip {
+    font-size: 12px;
+    padding: 6px 10px;
+    margin-bottom: 12px;
+  }
+  .dialog-preview {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
 }
 </style>

@@ -1,11 +1,23 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTripStore } from '../store/trip'
 import { formatDate, getAttractionImage } from '../utils/format'
 import { loadAmap } from '../utils/amap'
 import { searchAttractionsByKeyword } from '../services/attractionService'
 import { ElMessage, ElMessageBox } from 'element-plus'
+
+// 移动端检测
+const isMobile = ref(window.innerWidth < 768)
+function handleResize() {
+  isMobile.value = window.innerWidth < 768
+}
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
 
 const router = useRouter()
 const trip = useTripStore()
@@ -803,8 +815,8 @@ function getTripDateRange(tripItem) {
     </div>
 
     <!-- 添加行程对话框 -->
-    <el-dialog v-model="showAdd" title="添加行程项" width="460px">
-      <el-form :model="addForm" :rules="formRules" ref="addFormRef" label-width="90px">
+    <el-dialog v-model="showAdd" title="添加行程项" width="380px" class="mobile-dialog" :top="'5vh'">
+      <el-form :model="addForm" :rules="formRules" ref="addFormRef" :label-width="isMobile ? '70px' : '90px'">
         <el-form-item label="景点名称" prop="title">
           <el-input v-model="addForm.title" placeholder="请输入景点名称" @input="autoFillCity(addForm, addForm.type)" />
         </el-form-item>
@@ -830,14 +842,16 @@ function getTripDateRange(tripItem) {
         </el-form-item>
       </el-form>
       <template #footer>
-        <button class="btn-ghost" @click="showAdd = false; resetAddForm()">取消</button>
-        <button class="btn-primary" style="margin-left:8px" @click="handleAdd">添加</button>
+        <div class="dialog-footer">
+          <button class="btn-ghost" @click="showAdd = false; resetAddForm()">取消</button>
+          <button class="btn-primary" style="margin-left:8px" @click="handleAdd">添加</button>
+        </div>
       </template>
     </el-dialog>
 
     <!-- 编辑行程对话框 -->
-    <el-dialog v-model="showEdit" title="编辑行程项" width="460px">
-      <el-form :model="editForm" :rules="formRules" ref="editFormRef" label-width="90px">
+    <el-dialog v-model="showEdit" title="编辑行程项" width="380px" class="mobile-dialog" :top="'5vh'">
+      <el-form :model="editForm" :rules="formRules" ref="editFormRef" :label-width="isMobile ? '70px' : '90px'">
         <el-form-item label="景点名称" prop="title">
           <el-input v-model="editForm.title" placeholder="请输入景点名称" @input="autoFillCity(editForm, editForm.type)" />
         </el-form-item>
@@ -863,8 +877,10 @@ function getTripDateRange(tripItem) {
         </el-form-item>
       </el-form>
       <template #footer>
-        <button class="btn-ghost" @click="showEdit = false; resetEditForm()">取消</button>
-        <button class="btn-primary" style="margin-left:8px" @click="handleEdit">保存</button>
+        <div class="dialog-footer">
+          <button class="btn-ghost" @click="showEdit = false; resetEditForm()">取消</button>
+          <button class="btn-primary" style="margin-left:8px" @click="handleEdit">保存</button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -1186,5 +1202,69 @@ function getTripDateRange(tripItem) {
     font-size: 13px;
   }
   .fav-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+
+/* 弹窗底部按钮布局 */
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* 弹窗移动端适配 */
+:deep(.mobile-dialog) {
+  .el-dialog {
+    width: 92% !important;
+    max-width: 380px;
+    margin: 5vh auto !important;
+  }
+  .el-dialog__header {
+    padding: 14px 16px;
+    .el-dialog__title {
+      font-size: 16px;
+    }
+  }
+  .el-dialog__body {
+    padding: 12px 16px;
+  }
+  .el-dialog__footer {
+    padding: 10px 16px 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  :deep(.mobile-dialog) {
+    .el-dialog {
+      width: 92% !important;
+      margin: 3vh auto !important;
+    }
+    .el-dialog__header {
+      padding: 12px 14px;
+      .el-dialog__title {
+        font-size: 15px;
+      }
+    }
+    .el-dialog__body {
+      padding: 10px 14px;
+    }
+    .el-dialog__footer {
+      padding: 8px 14px 14px;
+    }
+    .el-dialog__footer .dialog-footer {
+      justify-content: center;
+      button {
+        flex: 1;
+        padding: 10px 16px;
+        font-size: 14px;
+        min-height: 44px;
+      }
+    }
+    .el-form-item {
+      margin-bottom: 14px;
+    }
+    .el-form-item__label {
+      font-size: 13px;
+    }
+  }
 }
 </style>
