@@ -1,11 +1,63 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-// 行程与全局状态管理
+// ===== store 外部的工具函数（避免变量提升问题） =====
+
+// 判断行程是否有效：有行程项，或通过首页"开始规划"明确创建的（有目的地+日期）
+function isValidTrip(tripItem, allPlans) {
+  if (!tripItem) return false
+  const hasPlans = allPlans.some(p => p.tripId === tripItem.id)
+  if (hasPlans) return true
+  // 明确创建的行程：有目的地、并且有开始或结束日期
+  const hasPlanning = tripItem.destination && (tripItem.startDate || tripItem.endDate)
+  return !!hasPlanning
+}
+
+// 加载时清理无效的旧行程（旧逻辑在目的地搜索城市时创建的空行程）
+function cleanupInvalidTrips(loadedTrips, loadedPlans) {
+  const validTrips = loadedTrips.filter(t => isValidTrip(t, loadedPlans))
+  if (validTrips.length !== loadedTrips.length) {
+    const validIds = new Set(validTrips.map(t => t.id))
+    const filteredPlans = loadedPlans.filter(p => validIds.has(p.tripId))
+    localStorage.setItem('travel_trips', JSON.stringify(validTrips))
+    localStorage.setItem('travel_plans', JSON.stringify(filteredPlans))
+  }
+  return validTrips
+}
+
+function findValidActiveTripId(validTrips) {
+  return validTrips[0]?.id || null
+}
+
+function loadTripsRaw() {
+  try { return JSON.parse(localStorage.getItem('travel_trips') || '[]') }
+  catch { return [] }
+}
+function loadPlansRaw() {
+  try { return JSON.parse(localStorage.getItem('travel_plans') || '[]') }
+  catch { return [] }
+}
+function loadFavoritesRaw() {
+  try { return JSON.parse(localStorage.getItem('travel_favorites') || '[]') }
+  catch { return [] }
+}
+
+// ===== 行程与全局状态管理 =====
 export const useTripStore = defineStore('trip', () => {
+  // 初始化时加载原始数据并清理无效行程
+  const _rawPlans = loadPlansRaw()
+  const _rawTrips = loadTripsRaw()
+  const validTrips = cleanupInvalidTrips(_rawTrips, _rawPlans)
+  const validTripIds = new Set(validTrips.map(t => t.id))
+  // 只保留有效行程的 plans
+  const validPlans = validTripIds.size ? _rawPlans.filter(p => validTripIds.has(p.tripId)) : _rawPlans
+  if (validPlans.length !== _rawPlans.length) {
+    localStorage.setItem('travel_plans', JSON.stringify(validPlans))
+  }
+
   // 行程列表（支持多个行程）
-  const trips = ref(loadTrips())
-  const activeTripId = ref(trips.value[0]?.id || null)
+  const trips = ref(validTrips)
+  const activeTripId = ref(findValidActiveTripId(validTrips))
 
   // 当前行程（兼容旧代码，指向当前选中行程的字段）
   const origin = computed(() => activeTrip.value?.origin || null)
@@ -24,10 +76,10 @@ export const useTripStore = defineStore('trip', () => {
   const selectedAttraction = ref(null) // { name, lng, lat, address, ... }
 
   // 行程规划列表(持久化) - 关联到当前行程
-  const plans = ref(loadPlans())
+  const plans = ref(validPlans)
 
   // 收藏的景点
-  const favorites = ref(loadFavorites())
+  const favorites = ref(loadFavoritesRaw())
 
   // 计算行程天数
   const tripDays = computed(() => {
@@ -70,7 +122,6 @@ export const useTripStore = defineStore('trip', () => {
 
   // 设置行程（仅更新当前行程，不会自动创建新行程）
   function setTrip({ origin: o, destination: d, startDate: s, endDate: e, travelers: t }) {
-    // 更新当前活动行程（如果没有行程则不做任何处理，需要手动创建）
     const idx = trips.value.findIndex(t => t.id === activeTripId.value)
     if (idx > -1) {
       const trip = trips.value[idx]
@@ -91,11 +142,8 @@ export const useTripStore = defineStore('trip', () => {
 
   // 删除行程
   function deleteTrip(tripId) {
-    // 删除该行程的所有计划
     plans.value = plans.value.filter(p => p.tripId !== tripId)
-    // 删除行程
     trips.value = trips.value.filter(t => t.id !== tripId)
-    // 如果删除的是当前活动行程，切换到第一个或设为null
     if (activeTripId.value === tripId) {
       activeTripId.value = trips.value[0]?.id || null
     }
@@ -109,21 +157,11 @@ export const useTripStore = defineStore('trip', () => {
     if (idx === -1) return
     const trip = trips.value[idx]
     switch (field) {
-      case 'origin':
-        trip.origin = null
-        break
-      case 'destination':
-        trip.destination = null
-        break
-      case 'startDate':
-        trip.startDate = null
-        break
-      case 'endDate':
-        trip.endDate = null
-        break
-      case 'travelers':
-        trip.travelers = 2
-        break
+      case 'origin': trip.origin = null; break
+      case 'destination': trip.destination = null; break
+      case 'startDate': trip.startDate = null; break
+      case 'endDate': trip.endDate = null; break
+      case 'travelers': trip.travelers = 2; break
     }
     trips.value[idx] = { ...trip }
     saveTrips()
@@ -139,7 +177,6 @@ export const useTripStore = defineStore('trip', () => {
 
   // 添加行程规划（如果没有行程，自动创建一个）
   function addPlan(plan) {
-    // 如果没有活动行程，自动创建一个新行程
     if (!activeTripId.value || trips.value.length === 0) {
       const newTrip = createTrip({
         origin: plan.origin || null,
@@ -155,10 +192,8 @@ export const useTripStore = defineStore('trip', () => {
     plan.id = Date.now()
     plan.createdAt = new Date().toISOString()
     plans.value.unshift(plan)
-    
-    // 自动更新行程的日期范围
+
     updateTripDateRange(plan)
-    
     savePlans()
   }
 
@@ -166,23 +201,12 @@ export const useTripStore = defineStore('trip', () => {
   function updateTripDateRange(plan) {
     const idx = trips.value.findIndex(t => t.id === activeTripId.value)
     if (idx === -1) return
-    
     const trip = trips.value[idx]
     const planStartDate = plan.startDate || plan.date
     const planEndDate = plan.endDate || planStartDate
-    
     if (!planStartDate) return
-    
-    // 更新开始日期（取最早的日期）
-    if (!trip.startDate || planStartDate < trip.startDate) {
-      trip.startDate = planStartDate
-    }
-    
-    // 更新结束日期（取最晚的日期）
-    if (!trip.endDate || planEndDate > trip.endDate) {
-      trip.endDate = planEndDate
-    }
-    
+    if (!trip.startDate || planStartDate < trip.startDate) trip.startDate = planStartDate
+    if (!trip.endDate || planEndDate > trip.endDate) trip.endDate = planEndDate
     trips.value[idx] = { ...trip }
     saveTrips()
   }
@@ -203,11 +227,8 @@ export const useTripStore = defineStore('trip', () => {
   // 收藏景点
   function toggleFavorite(attr) {
     const idx = favorites.value.findIndex(f => f.name === attr.name)
-    if (idx > -1) {
-      favorites.value.splice(idx, 1)
-    } else {
-      favorites.value.push(attr)
-    }
+    if (idx > -1) favorites.value.splice(idx, 1)
+    else favorites.value.push(attr)
     saveFavorites()
   }
 
@@ -216,30 +237,9 @@ export const useTripStore = defineStore('trip', () => {
   }
 
   // 本地存储
-  function saveTrips() {
-    localStorage.setItem('travel_trips', JSON.stringify(trips.value))
-  }
-  function loadTrips() {
-    try {
-      return JSON.parse(localStorage.getItem('travel_trips') || '[]')
-    } catch { return [] }
-  }
-  function savePlans() {
-    localStorage.setItem('travel_plans', JSON.stringify(plans.value))
-  }
-  function loadPlans() {
-    try {
-      return JSON.parse(localStorage.getItem('travel_plans') || '[]')
-    } catch { return [] }
-  }
-  function saveFavorites() {
-    localStorage.setItem('travel_favorites', JSON.stringify(favorites.value))
-  }
-  function loadFavorites() {
-    try {
-      return JSON.parse(localStorage.getItem('travel_favorites') || '[]')
-    } catch { return [] }
-  }
+  function saveTrips() { localStorage.setItem('travel_trips', JSON.stringify(trips.value)) }
+  function savePlans() { localStorage.setItem('travel_plans', JSON.stringify(plans.value)) }
+  function saveFavorites() { localStorage.setItem('travel_favorites', JSON.stringify(favorites.value)) }
 
   return {
     // 行程列表
