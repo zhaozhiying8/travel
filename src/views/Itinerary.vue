@@ -56,6 +56,18 @@ function openAddDialog() {
   showAdd.value = true
 }
 
+// 新建行程（创建一个空的新行程）
+function createNewTrip() {
+  trip.createTrip({
+    origin: null,
+    destination: null,
+    startDate: null,
+    endDate: null,
+    travelers: 2
+  })
+  ElMessage.success('已创建新行程，请添加景点')
+}
+
 // 必填校验规则
 const formRules = {
   title: [
@@ -719,6 +731,7 @@ function getTripDateRange(tripItem) {
     <!-- 操作按钮 -->
     <div class="actions">
       <button class="btn-primary" @click="openAddDialog">＋ 添加行程项</button>
+      <button class="btn-ghost" @click="createNewTrip">🆕 新建行程</button>
       <button class="btn-ghost" @click="$router.push('/destination')">🎯 去选景点</button>
       <button class="btn-ghost" :disabled="!trip.planCount" @click="shareItinerary">📤 分享行程</button>
       <button class="btn-ghost" :disabled="!trip.planCount" @click="printItinerary">🖨️ 打印行程单</button>

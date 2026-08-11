@@ -559,27 +559,32 @@ function confirmAddToItinerary() {
     }
   }
 
-  // 如果没有活动行程，先创建一个新行程（只有添加行程时才创建）
-  if (trip.trips.length === 0 || !trip.activeTripId) {
+  const currentCity = cityName.value
+  const activeDestCity = trip.activeTrip?.destination?.city || trip.activeTrip?.destination?.name
+
+  // 如果当前活动行程的目的地与当前城市相同，直接添加到该行程
+  if (trip.activeTripId && activeDestCity === currentCity) {
+    // 更新日期范围（如果有变化）
+    trip.setTrip({
+      startDate: addDateForm.value.startDate,
+      endDate: addDateForm.value.endDate
+    })
+  } else {
+    // 不同城市或无行程，创建新行程
     trip.createTrip({
       origin: origin,
-      destination: cityName.value ? { name: cityName.value, city: cityName.value } : (destination.value || null),
+      destination: currentCity ? { name: currentCity, city: currentCity } : (destination.value || null),
       startDate: addDateForm.value.startDate,
       endDate: addDateForm.value.endDate,
       travelers: 2
     })
-  } else {
-    // 已有行程，出发地如果没有就设置
-    if (!trip.origin && origin) {
-      trip.setTrip({ origin: origin })
-    }
   }
 
   trip.addPlan({
     title: attr.name,
     type: 'attraction',
-    destination: cityName.value,
-    attraction: { ...attr, city: cityName.value },
+    destination: currentCity,
+    attraction: { ...attr, city: currentCity },
     startDate: addDateForm.value.startDate,
     endDate: addDateForm.value.endDate,
     date: addDateForm.value.startDate,
