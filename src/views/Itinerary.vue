@@ -356,7 +356,7 @@ async function handleAdd() {
     }
   }
 
-  trip.addPlan({
+  const result = trip.addPlan({
     title: addForm.value.title,
     type: addForm.value.type,
     startDate: addForm.value.startDate,
@@ -367,6 +367,10 @@ async function handleAdd() {
     attraction: attractionData,
     note: addForm.value.note
   })
+  if (result.success === false && result.reason === 'duplicate') {
+    ElMessage.warning(`「${addForm.value.title}」该日期的行程已存在，请勿重复添加`)
+    return
+  }
   ElMessage.success('已添加到行程')
   showAdd.value = false
   resetAddForm()
@@ -405,6 +409,18 @@ async function handleEdit() {
     }
   }
 
+  // 编辑时重复校验：排除当前编辑项自身
+  if (trip.isPlanDuplicate(
+    editingPlan.value.tripId,
+    editForm.value.title,
+    editForm.value.startDate,
+    editForm.value.endDate,
+    editingPlan.value.id
+  )) {
+    ElMessage.warning(`「${editForm.value.title}」该日期的行程已存在，请勿重复添加`)
+    return
+  }
+
   trip.updatePlan(editingPlan.value.id, {
     title: editForm.value.title,
     type: editForm.value.type,
@@ -420,6 +436,26 @@ async function handleEdit() {
   showEdit.value = false
   editingPlan.value = null
   resetEditForm()
+}
+
+// 从收藏列表直接添加到行程
+function addFavToTrip(fav) {
+  const date = trip.startDate || ''
+  const result = trip.addPlan({
+    title: fav.name,
+    type: 'attraction',
+    attraction: fav,
+    destination: fav.city || '',
+    startDate: date,
+    endDate: date,
+    date: date,
+    note: fav.desc
+  })
+  if (result.success === false && result.reason === 'duplicate') {
+    ElMessage.warning(`「${fav.name}」该日期的行程已存在，请勿重复添加`)
+    return
+  }
+  ElMessage.success('已加入行程')
 }
 
 // 删除
@@ -820,7 +856,7 @@ function getTripDateRange(tripItem) {
             <div class="fav-ops">
               <button class="op-btn" @click="trip.selectAttraction(fav); $router.push('/map')">导航</button>
               <button class="op-btn" @click="trip.selectAttraction(fav); $router.push('/nearby')">附近</button>
-              <button class="op-btn" @click="trip.addPlan({ title: fav.name, type: 'attraction', attraction: fav, destination: fav.city || '', date: trip.startDate || '', note: fav.desc }); ElMessage.success('已加入行程')">＋行程</button>
+              <button class="op-btn" @click="addFavToTrip(fav)">＋行程</button>
             </div>
           </div>
         </div>

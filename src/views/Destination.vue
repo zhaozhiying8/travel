@@ -580,7 +580,7 @@ function confirmAddToItinerary() {
     })
   }
 
-  trip.addPlan({
+  const result = trip.addPlan({
     title: attr.name,
     type: 'attraction',
     destination: currentCity,
@@ -590,6 +590,12 @@ function confirmAddToItinerary() {
     date: addDateForm.value.startDate,
     note: attr.deep_info?.introduction || attr.address || ''
   })
+  if (result.success === false && result.reason === 'duplicate') {
+    ElMessage.warning(`「${attr.name}」(${addDateForm.value.startDate} ~ ${addDateForm.value.endDate}) 的行程已存在，请勿重复添加`)
+    showAddDateDialog.value = false
+    pendingAttraction.value = null
+    return
+  }
   ElMessage.success(`已将「${attr.name}」加入行程 (${addDateForm.value.startDate} ~ ${addDateForm.value.endDate})`)
   showAddDateDialog.value = false
   pendingAttraction.value = null

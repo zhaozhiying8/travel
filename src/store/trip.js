@@ -175,7 +175,23 @@ export const useTripStore = defineStore('trip', () => {
     selectedAttraction.value = attr
   }
 
+  // 检查行程是否重复（同一trip内景点名称+开始日期+结束日期相同视为重复）
+  // excludePlanId: 编辑时排除自身
+  function isPlanDuplicate(tripId, title, startDate, endDate, excludePlanId = null) {
+    const s = startDate || ''
+    const e = endDate || s
+    const name = (title || '').trim()
+    return plans.value.some(p => {
+      if (p.tripId !== tripId) return false
+      if (excludePlanId && p.id === excludePlanId) return false
+      const pS = p.startDate || p.date || ''
+      const pE = p.endDate || pS
+      return (p.title || '').trim() === name && pS === s && pE === e
+    })
+  }
+
   // 添加行程规划（如果没有行程，自动创建一个）
+  // 返回值: { success: boolean, reason?: 'duplicate' }
   function addPlan(plan) {
     if (!activeTripId.value || trips.value.length === 0) {
       const newTrip = createTrip({
@@ -189,12 +205,21 @@ export const useTripStore = defineStore('trip', () => {
     } else {
       plan.tripId = activeTripId.value
     }
+
+    // 重复校验：同一行程内名称+日期相同则认为已存在
+    const s = plan.startDate || plan.date || ''
+    const e = plan.endDate || s
+    if (isPlanDuplicate(plan.tripId, plan.title, s, e)) {
+      return { success: false, reason: 'duplicate' }
+    }
+
     plan.id = Date.now()
     plan.createdAt = new Date().toISOString()
     plans.value.unshift(plan)
 
     updateTripDateRange(plan)
     savePlans()
+    return { success: true }
   }
 
   // 更新行程的日期范围
@@ -249,7 +274,7 @@ export const useTripStore = defineStore('trip', () => {
     tripDays, planCount, isTripReady,
     setTrip, addTrip, createTrip, setActiveTrip, deleteTrip, clearField,
     setCurrentLocation, selectAttraction,
-    addPlan, removePlan, updatePlan,
+    addPlan, removePlan, updatePlan, isPlanDuplicate,
     toggleFavorite, isFavorite,
     getPlansByTrip
   }
