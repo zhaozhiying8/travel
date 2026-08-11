@@ -83,13 +83,25 @@ function startPlanning() {
 
 // 执行开始规划（创建或更新行程）
 function doStartPlanning() {
-  trip.setTrip({
-    origin: origin.value,
-    destination: destination.value,
-    startDate: dateRange.value[0],
-    endDate: dateRange.value[1],
-    travelers: travelers.value
-  })
+  if (trip.trips.length === 0 || !trip.activeTripId) {
+    // 没有行程时创建新行程（用户明确点击开始规划）
+    trip.createTrip({
+      origin: origin.value,
+      destination: destination.value,
+      startDate: dateRange.value[0],
+      endDate: dateRange.value[1],
+      travelers: travelers.value
+    })
+  } else {
+    // 已有行程则替换当前行程
+    trip.setTrip({
+      origin: origin.value,
+      destination: destination.value,
+      startDate: dateRange.value[0],
+      endDate: dateRange.value[1],
+      travelers: travelers.value
+    })
+  }
   ElMessage.success(`已设置前往 ${destination.value.name} 的行程`)
   router.push('/destination')
 }
@@ -98,8 +110,6 @@ function doStartPlanning() {
 function pickDestination(city) {
   const destData = { name: city.name, lng: city.lng, lat: city.lat, city: city.name, address: city.desc }
   destination.value = destData
-  // 同时更新store,确保跳转后Destination页面能读取到正确的城市
-  trip.setTrip({ destination: destData })
 }
 
 // 用出发地作为定位

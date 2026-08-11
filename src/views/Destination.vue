@@ -440,8 +440,7 @@ const showCityBanner = computed(() => {
 
 watch(destination, () => {
   if (destination.value) {
-    trip.setTrip({ destination: destination.value })
-    // 切换城市时清除之前的景点搜索
+    // 切换城市时清除之前的景点搜索（仅浏览，不自动创建行程）
     clearSearch()
     loadAttractions()
     loadCityBanner()
@@ -542,28 +541,37 @@ function confirmAddToItinerary() {
   if (!pendingAttraction.value) return
   const attr = pendingAttraction.value
 
-  // 如果当前行程没有设置出发地，自动设置为当前定位的城市
-  if (!trip.origin) {
-    if (trip.currentLocation && trip.currentLocation.city) {
-      // 使用当前定位的城市作为出发地
-      trip.setTrip({
-        origin: {
-          name: trip.currentLocation.city,
-          lng: trip.currentLocation.lng,
-          lat: trip.currentLocation.lat,
-          city: trip.currentLocation.city
-        }
-      })
-    } else if (cityName.value) {
-      // 备选：使用当前浏览的城市
-      trip.setTrip({
-        origin: {
-          name: cityName.value,
-          lng: destination.value?.lng,
-          lat: destination.value?.lat,
-          city: cityName.value
-        }
-      })
+  // 自动设置出发地
+  let origin = null
+  if (trip.currentLocation && trip.currentLocation.city) {
+    origin = {
+      name: trip.currentLocation.city,
+      lng: trip.currentLocation.lng,
+      lat: trip.currentLocation.lat,
+      city: trip.currentLocation.city
+    }
+  } else if (cityName.value) {
+    origin = {
+      name: cityName.value,
+      lng: destination.value?.lng,
+      lat: destination.value?.lat,
+      city: cityName.value
+    }
+  }
+
+  // 如果没有活动行程，先创建一个新行程（只有添加行程时才创建）
+  if (trip.trips.length === 0 || !trip.activeTripId) {
+    trip.createTrip({
+      origin: origin,
+      destination: cityName.value ? { name: cityName.value, city: cityName.value } : (destination.value || null),
+      startDate: addDateForm.value.startDate,
+      endDate: addDateForm.value.endDate,
+      travelers: 2
+    })
+  } else {
+    // 已有行程，出发地如果没有就设置
+    if (!trip.origin && origin) {
+      trip.setTrip({ origin: origin })
     }
   }
 

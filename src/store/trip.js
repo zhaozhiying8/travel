@@ -68,14 +68,9 @@ export const useTripStore = defineStore('trip', () => {
     return newTrip
   }
 
-  // 设置行程（更新当前行程或创建新行程）
+  // 设置行程（仅更新当前行程，不会自动创建新行程）
   function setTrip({ origin: o, destination: d, startDate: s, endDate: e, travelers: t }) {
-    // 如果没有现有行程或没有活动行程，创建新行程
-    if (!activeTripId.value && trips.value.length === 0) {
-      return createTrip({ origin: o, destination: d, startDate: s, endDate: e, travelers: t })
-    }
-
-    // 更新当前活动行程
+    // 更新当前活动行程（如果没有行程则不做任何处理，需要手动创建）
     const idx = trips.value.findIndex(t => t.id === activeTripId.value)
     if (idx > -1) {
       const trip = trips.value[idx]
@@ -142,10 +137,22 @@ export const useTripStore = defineStore('trip', () => {
     selectedAttraction.value = attr
   }
 
-  // 添加行程规划
+  // 添加行程规划（如果没有行程，自动创建一个）
   function addPlan(plan) {
+    // 如果没有活动行程，自动创建一个新行程
+    if (!activeTripId.value || trips.value.length === 0) {
+      const newTrip = createTrip({
+        origin: plan.origin || null,
+        destination: plan.destination ? { name: plan.destination, city: plan.destination } : null,
+        startDate: plan.startDate || plan.date || null,
+        endDate: plan.endDate || plan.startDate || plan.date || null,
+        travelers: 2
+      })
+      plan.tripId = newTrip.id
+    } else {
+      plan.tripId = activeTripId.value
+    }
     plan.id = Date.now()
-    plan.tripId = activeTripId.value
     plan.createdAt = new Date().toISOString()
     plans.value.unshift(plan)
     
