@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
 import { useTripStore } from '../store/trip'
 import AmapKeyTip from '../components/AmapKeyTip.vue'
 import { loadAmap, getCurrentPosition, planRoutes } from '../utils/amap'
@@ -333,13 +333,21 @@ onMounted(() => {
   initMap()
 })
 
+// 编辑模式切换时触发地图 resize，确保地图渲染正确
+watch(editingWhich, async () => {
+  await nextTick()
+  if (map) {
+    setTimeout(() => map?.resize(), 100)
+  }
+})
+
 onBeforeUnmount(() => {
   if (map) { map.destroy(); map = null }
 })
 </script>
 
 <template>
-  <div class="map-view">
+  <div class="map-view" :class="{ editing: editingWhich }">
     <AmapKeyTip />
     <div class="map-layout">
       <!-- 左侧控制面板 -->
@@ -649,6 +657,15 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   z-index: 10;
 }
+
+@media (max-width: 640px) {
+  .ep-candidates {
+    max-height: 40vh;
+  }
+  .cand-item {
+    padding: 8px 10px;
+  }
+}
 .cand-loading, .cand-empty {
   padding: 10px 12px;
   font-size: 13px;
@@ -807,19 +824,33 @@ onBeforeUnmount(() => {
   }
   .control-panel {
     order: 2;
-    max-height: 45vh;
     overflow-y: auto;
   }
   .map-container {
     order: 1;
-    height: 45vh;
-    min-height: 320px;
+    height: 40vh;
+    min-height: 280px;
     position: sticky;
     top: 64px;
     z-index: 10;
   }
   .panel-actions { flex-wrap: wrap; }
   .btn-primary, .btn-plan { flex: 1 1 calc(50% - 4px); min-height: 44px; }
+
+  /* 编辑模式：键盘弹出时缩小地图，给控制面板更多空间 */
+  .map-view.editing .map-container {
+    height: 25vh;
+    min-height: 160px;
+    position: static;
+    top: 0;
+  }
+  .map-view.editing .control-panel {
+    max-height: none;
+    flex: 1;
+  }
+  .map-view.editing .map-layout {
+    gap: 8px;
+  }
 }
 @media (max-width: 640px) {
   .map-view { padding: 10px; }
@@ -832,6 +863,12 @@ onBeforeUnmount(() => {
   .mode-icon { font-size: 22px; }
   .mode-name { font-size: 13px; }
   .btn-nav { padding: 12px; font-size: 14px; min-height: 44px; }
-  .map-container { height: 40vh; min-height: 280px; top: 60px; }
+  .map-container { height: 35vh; min-height: 240px; top: 60px; }
+
+  /* 编辑模式：进一步缩小地图 */
+  .map-view.editing .map-container {
+    height: 22vh;
+    min-height: 140px;
+  }
 }
 </style>
