@@ -29,4 +29,17 @@
   gap: 8px;
 }
 .tip { opacity: 0.7; }
+@media (max-width: 640px) {
+  .app-footer {
+    padding: 14px 16px;
+    margin-top: 24px;
+  }
+  .footer-inner {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    font-size: 12px;
+    gap: 6px;
+  }
+}
 </style>

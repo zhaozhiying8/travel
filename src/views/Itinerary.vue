@@ -704,53 +704,57 @@ function getTripDateRange(tripItem) {
         :class="{ active: tripItem.id === trip.activeTripId }"
         @click="switchTrip(tripItem.id)"
       >
-        <button class="ov-del-card-btn" @click.stop="clearAllTrip" title="删除这个行程">🗑️</button>
-        <div class="ov-left">
-          <h2 class="ov-title">📋 {{ tripItem.destination?.city || tripItem.destination?.name || '我的行程' }}</h2>
-          <div class="ov-info">
-            <div class="ov-item">
-              <span class="ov-label">出发地</span>
-              <span class="ov-value">{{ tripItem.origin?.name || '-' }}</span>
+        <div class="ov-header">
+          <div class="ov-title-wrap">
+            <h2 class="ov-title">📋 {{ tripItem.destination?.city || tripItem.destination?.name || '我的行程' }}</h2>
+            <span v-if="tripItem.id === trip.activeTripId" class="trip-active-badge">当前行程</span>
+          </div>
+          <button class="ov-del-card-btn" @click.stop="clearAllTrip" title="删除这个行程">🗑️</button>
+        </div>
+        <div class="ov-body">
+          <div class="ov-info-list">
+            <div class="ov-info-row">
+              <span class="info-label">出发地</span>
+              <span class="info-value">{{ tripItem.origin?.name || '-' }}</span>
+              <span class="info-sep">→</span>
+              <span class="info-label">目的地</span>
+              <span class="info-value">{{ tripItem.destination?.city || tripItem.destination?.name || '-' }}</span>
             </div>
-            <span class="ov-arrow">→</span>
-            <div class="ov-item">
-              <span class="ov-label">目的地</span>
-              <span class="ov-value">{{ tripItem.destination?.city || tripItem.destination?.name || '-' }}</span>
-            </div>
-            <div class="ov-item">
-              <span class="ov-label">日期</span>
-              <span class="ov-value">
+            <div class="ov-info-row">
+              <span class="info-label">日期</span>
+              <span class="info-value">
                 <template v-if="getTripDateRange(tripItem).start">
                   {{ formatDate(getTripDateRange(tripItem).start) }} ~ {{ formatDate(getTripDateRange(tripItem).end) }}
                 </template>
                 <template v-else>-</template>
               </span>
             </div>
-            <div class="ov-item">
-              <span class="ov-label">天数</span>
-              <span class="ov-value">{{ calculateTripDays(tripItem) }} 天</span>
+            <div class="ov-info-row ov-info-inline">
+              <div class="info-chip">
+                <span class="chip-label">天数</span>
+                <span class="chip-value">{{ calculateTripDays(tripItem) }} 天</span>
+              </div>
+              <div class="info-chip">
+                <span class="chip-label">人数</span>
+                <span class="chip-value">{{ tripItem.travelers }} 人</span>
+              </div>
             </div>
-            <div class="ov-item">
-              <span class="ov-label">人数</span>
-              <span class="ov-value">{{ tripItem.travelers }} 人</span>
+          </div>
+          <div class="ov-stats">
+            <div class="stat">
+              <div class="stat-num">{{ getTripStats(tripItem).planCount }}</div>
+              <div class="stat-label">行程项</div>
+            </div>
+            <div class="stat">
+              <div class="stat-num">{{ getTripStats(tripItem).plannedDays }}</div>
+              <div class="stat-label">已安排天</div>
+            </div>
+            <div class="stat">
+              <div class="stat-num">{{ trip.favorites.length }}</div>
+              <div class="stat-label">收藏景点</div>
             </div>
           </div>
         </div>
-        <div class="ov-stats">
-          <div class="stat">
-            <div class="stat-num">{{ getTripStats(tripItem).planCount }}</div>
-            <div class="stat-label">行程项</div>
-          </div>
-          <div class="stat">
-            <div class="stat-num">{{ getTripStats(tripItem).plannedDays }}</div>
-            <div class="stat-label">已安排天</div>
-          </div>
-          <div class="stat">
-            <div class="stat-num">{{ trip.favorites.length }}</div>
-            <div class="stat-label">收藏景点</div>
-          </div>
-        </div>
-        <div v-if="tripItem.id === trip.activeTripId" class="trip-active-badge">✓ 当前行程</div>
       </div>
     </div>
 
@@ -864,71 +868,203 @@ function getTripDateRange(tripItem) {
     </div>
 
     <!-- 添加行程对话框 -->
-    <el-dialog v-model="showAdd" title="添加行程项" width="380px" class="mobile-dialog" :top="'5vh'">
-      <el-form :model="addForm" :rules="formRules" ref="addFormRef" :label-width="isMobile ? '70px' : '90px'">
-        <el-form-item label="景点名称" prop="title">
-          <el-input v-model="addForm.title" placeholder="请输入景点名称" @input="autoFillCity(addForm, addForm.type)" />
-        </el-form-item>
-        <el-form-item label="类型" prop="type">
-          <el-select v-model="addForm.type" style="width:100%" @change="autoFillCity(addForm, addForm.type)">
-            <el-option v-for="t in typeOptions" :key="t.value" :label="`${t.icon} ${t.label}`" :value="t.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="开始日期" prop="startDate">
-          <el-date-picker v-model="addForm.startDate" type="date" placeholder="选择开始日期" value-format="YYYY-MM-DD" style="width:100%" />
-        </el-form-item>
-        <el-form-item label="结束日期" prop="endDate">
-          <el-date-picker v-model="addForm.endDate" type="date" placeholder="选择结束日期" value-format="YYYY-MM-DD" style="width:100%" />
-        </el-form-item>
-        <el-form-item label="所在城市" prop="city">
-          <el-input v-model="addForm.city" placeholder="如:北京" />
-        </el-form-item>
-        <!-- <el-form-item label="详细地址">
-          <el-input v-model="addForm.address" placeholder="可选,如:西湖区龙井路1号" />
-        </el-form-item> -->
-        <el-form-item label="备注">
-          <el-input v-model="addForm.note" type="textarea" :rows="2" placeholder="可选备注信息" />
-        </el-form-item>
+    <el-dialog
+      v-model="showAdd"
+      width="460px"
+      custom-class="plan-dialog-mobile"
+      class="mobile-dialog plan-dialog"
+      :top="'4vh'"
+      align-center
+      append-to-body
+      :close-on-click-modal="false"
+    >
+      <template #header>
+        <div class="dialog-header">
+          <div class="dialog-title-wrap">
+            <span class="dialog-title-icon">📋</span>
+            <span class="dialog-title-text">添加行程项</span>
+          </div>
+          <div class="dialog-subtitle">填写以下信息创建新的行程安排</div>
+        </div>
+      </template>
+      <el-form
+        :model="addForm"
+        :rules="formRules"
+        ref="addFormRef"
+        label-position="right"
+        label-width="90px"
+        class="plan-form"
+      >
+        <div class="form-section">
+          <el-form-item label="景点名称" prop="title">
+            <el-input 
+              v-model="addForm.title" 
+              placeholder="请输入景点名称" 
+              @input="autoFillCity(addForm, addForm.type)"
+              class="form-input"
+            />
+          </el-form-item>
+          <el-form-item label="类型" prop="type">
+            <el-select v-model="addForm.type" style="width:100%" @change="autoFillCity(addForm, addForm.type)" class="form-select">
+              <el-option v-for="t in typeOptions" :key="t.value" :label="`${t.icon}  ${t.label}`" :value="t.value" />
+            </el-select>
+          </el-form-item>
+        </div>
+        
+        <div class="form-divider">
+          <span class="divider-icon">📅</span>
+          <span class="divider-text">日期安排</span>
+        </div>
+        
+        <div class="form-section form-date-section">
+          <el-form-item label="开始日期" prop="startDate">
+            <el-date-picker 
+              v-model="addForm.startDate" 
+              type="date" 
+              placeholder="选择开始日期" 
+              value-format="YYYY-MM-DD" 
+              style="width:100%"
+              class="form-date"
+            />
+          </el-form-item>
+          <el-form-item label="结束日期" prop="endDate">
+            <el-date-picker 
+              v-model="addForm.endDate" 
+              type="date" 
+              placeholder="选择结束日期" 
+              value-format="YYYY-MM-DD" 
+              style="width:100%"
+              class="form-date"
+            />
+          </el-form-item>
+        </div>
+        
+        <div class="form-section">
+          <el-form-item label="所在城市" prop="city">
+            <el-input v-model="addForm.city" placeholder="如：北京市" class="form-input" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input 
+              v-model="addForm.note" 
+              type="textarea" 
+              :rows="2" 
+              placeholder="添加备注信息（可选）" 
+              class="form-textarea"
+              resize="none"
+            />
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
-        <div class="dialog-footer">
-          <button class="btn-ghost" @click="showAdd = false; resetAddForm()">取消</button>
-          <button class="btn-primary" style="margin-left:8px" @click="handleAdd">添加</button>
+        <div class="dialog-footer plan-footer" :class="{ 'mobile-footer': isMobile }">
+          <button class="btn-outline" @click="showAdd = false; resetAddForm()">
+            <span class="btn-text">取消</span>
+          </button>
+          <button class="btn-primary-plan" @click="handleAdd">
+            <span class="btn-icon">✓</span>
+            <span class="btn-text">确认添加</span>
+          </button>
         </div>
       </template>
     </el-dialog>
 
     <!-- 编辑行程对话框 -->
-    <el-dialog v-model="showEdit" title="编辑行程项" width="380px" class="mobile-dialog" :top="'5vh'">
-      <el-form :model="editForm" :rules="formRules" ref="editFormRef" :label-width="isMobile ? '70px' : '90px'">
-        <el-form-item label="景点名称" prop="title">
-          <el-input v-model="editForm.title" placeholder="请输入景点名称" @input="autoFillCity(editForm, editForm.type)" />
-        </el-form-item>
-        <el-form-item label="类型" prop="type">
-          <el-select v-model="editForm.type" style="width:100%" @change="autoFillCity(editForm, editForm.type)">
-            <el-option v-for="t in typeOptions" :key="t.value" :label="`${t.icon} ${t.label}`" :value="t.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="开始日期" prop="startDate">
-          <el-date-picker v-model="editForm.startDate" type="date" placeholder="选择开始日期" value-format="YYYY-MM-DD" style="width:100%" />
-        </el-form-item>
-        <el-form-item label="结束日期" prop="endDate">
-          <el-date-picker v-model="editForm.endDate" type="date" placeholder="选择结束日期" value-format="YYYY-MM-DD" style="width:100%" />
-        </el-form-item>
-        <el-form-item label="所在城市" prop="city">
-          <el-input v-model="editForm.city" placeholder="如:北京" />
-        </el-form-item>
-        <!-- <el-form-item label="详细地址">
-          <el-input v-model="editForm.address" placeholder="可选,如:西湖区龙井路1号" />
-        </el-form-item> -->
-        <el-form-item label="备注">
-          <el-input v-model="editForm.note" type="textarea" :rows="2" placeholder="可选备注信息" />
-        </el-form-item>
+    <el-dialog
+      v-model="showEdit"
+      width="460px"
+      custom-class="plan-dialog-mobile"
+      class="mobile-dialog plan-dialog"
+      :top="'4vh'"
+      align-center
+      append-to-body
+      :close-on-click-modal="false"
+    >
+      <template #header>
+        <div class="dialog-header">
+          <div class="dialog-title-wrap">
+            <span class="dialog-title-icon">✏️</span>
+            <span class="dialog-title-text">编辑行程项</span>
+          </div>
+          <div class="dialog-subtitle">修改行程项的详细信息</div>
+        </div>
+      </template>
+      <el-form
+        :model="editForm"
+        :rules="formRules"
+        ref="editFormRef"
+        label-position="right"
+        label-width="90px"
+        class="plan-form"
+      >
+        <div class="form-section">
+          <el-form-item label="景点名称" prop="title">
+            <el-input 
+              v-model="editForm.title" 
+              placeholder="请输入景点名称" 
+              @input="autoFillCity(editForm, editForm.type)"
+              class="form-input"
+            />
+          </el-form-item>
+          <el-form-item label="类型" prop="type">
+            <el-select v-model="editForm.type" style="width:100%" @change="autoFillCity(editForm, editForm.type)" class="form-select">
+              <el-option v-for="t in typeOptions" :key="t.value" :label="`${t.icon}  ${t.label}`" :value="t.value" />
+            </el-select>
+          </el-form-item>
+        </div>
+        
+        <div class="form-divider">
+          <span class="divider-icon">📅</span>
+          <span class="divider-text">日期安排</span>
+        </div>
+        
+        <div class="form-section form-date-section">
+          <el-form-item label="开始日期" prop="startDate">
+            <el-date-picker 
+              v-model="editForm.startDate" 
+              type="date" 
+              placeholder="选择开始日期" 
+              value-format="YYYY-MM-DD" 
+              style="width:100%"
+              class="form-date"
+            />
+          </el-form-item>
+          <el-form-item label="结束日期" prop="endDate">
+            <el-date-picker 
+              v-model="editForm.endDate" 
+              type="date" 
+              placeholder="选择结束日期" 
+              value-format="YYYY-MM-DD" 
+              style="width:100%"
+              class="form-date"
+            />
+          </el-form-item>
+        </div>
+        
+        <div class="form-section">
+          <el-form-item label="所在城市" prop="city">
+            <el-input v-model="editForm.city" placeholder="如：北京市" class="form-input" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input 
+              v-model="editForm.note" 
+              type="textarea" 
+              :rows="2" 
+              placeholder="添加备注信息（可选）" 
+              class="form-textarea"
+              resize="none"
+            />
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
-        <div class="dialog-footer">
-          <button class="btn-ghost" @click="showEdit = false; resetEditForm()">取消</button>
-          <button class="btn-primary" style="margin-left:8px" @click="handleEdit">保存</button>
+        <div class="dialog-footer plan-footer" :class="{ 'mobile-footer': isMobile }">
+          <button class="btn-outline" @click="showEdit = false; resetEditForm()">
+            <span class="btn-text">取消</span>
+          </button>
+          <button class="btn-primary-plan" @click="handleEdit">
+            <span class="btn-icon">✓</span>
+            <span class="btn-text">保存修改</span>
+          </button>
         </div>
       </template>
     </el-dialog>
@@ -936,50 +1072,168 @@ function getTripDateRange(tripItem) {
 </template>
 
 <style scoped>
+/* 行程卡片基础布局 */
 .overview {
-  padding: 24px;
-  margin-bottom: 16px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+/* 头部：标题 + 删除按钮 */
+.ov-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
 }
-.ov-title { font-size: 22px; font-weight: 800; margin-bottom: 14px; }
-.ov-info { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.ov-item { display: flex; flex-direction: column; }
-.ov-label { font-size: 11px; color: var(--text-light); }
-.ov-value { font-size: 15px; font-weight: 600; }
-.ov-arrow { color: var(--text-light); font-size: 18px; }
 
-/* 行程卡片删除按钮 */
-.overview { position: relative; }
+.ov-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ov-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 当前行程标记 */
+.trip-active-badge {
+  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+  color: #fff;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* 删除按钮 */
 .ov-del-card-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
   border: 1px solid #ffccc7;
   background: #fff;
   color: #ff4d4f;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  opacity: 0.7;
+  opacity: 0.5;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 .ov-del-card-btn:hover {
   background: #ff4d4f;
   color: #fff;
   opacity: 1;
   transform: scale(1.05);
+}
+
+/* 主体：信息 + 统计 */
+.ov-body {
+  display: flex;
+  gap: 14px;
+}
+
+/* 信息列表 */
+.ov-info-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ov-info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.info-label {
+  color: var(--text-light);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.info-value {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.info-sep {
+  color: var(--text-light);
+  margin: 0 2px;
+  font-size: 12px;
+}
+
+.ov-info-inline {
+  gap: 8px;
+}
+
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f7f8fa;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.chip-label {
+  color: var(--text-light);
+}
+
+.chip-value {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* 统计数据 */
+.ov-stats {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.stat {
+  text-align: center;
+  min-width: 52px;
+}
+
+.stat-num {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 2px;
 }
 
 /* 行程列表容器 */
@@ -992,7 +1246,6 @@ function getTripDateRange(tripItem) {
 
 /* 行程卡片 */
 .trip-card {
-  position: relative;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -1006,33 +1259,16 @@ function getTripDateRange(tripItem) {
   box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
 }
 
-/* 当前行程标记 */
-.trip-active-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background: var(--primary);
-  color: #fff;
-  font-size: 11px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-weight: 500;
-}
-
 /* 空卡片样式 */
 .ov-empty-card {
   justify-content: center;
   align-items: center;
   text-align: center;
-  min-height: 120px;
+  min-height: 100px;
 }
 .ov-empty { color: var(--text-light); }
-.ov-empty-icon { font-size: 32px; margin-bottom: 8px; }
+.ov-empty-icon { font-size: 28px; margin-bottom: 6px; }
 .ov-empty a { color: var(--primary); cursor: pointer; }
-.ov-stats { display: flex; gap: 20px; }
-.stat { text-align: center; }
-.stat-num { font-size: 28px; font-weight: 800; color: var(--primary); }
-.stat-label { font-size: 12px; color: var(--text-light); }
 
 .actions {
   display: flex;
@@ -1063,35 +1299,36 @@ function getTripDateRange(tripItem) {
 .btn-danger:hover:not(:disabled) { background: #fff1f0; }
 .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.plans { display: flex; flex-direction: column; gap: 16px; }
+.plans { display: flex; flex-direction: column; gap: 14px; }
 .day-group { overflow: hidden; }
 .day-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 20px;
+  padding: 12px 18px;
   background: linear-gradient(90deg, #fff3ee, #fff);
   border-bottom: 1px solid var(--border);
 }
-.day-badge { font-size: 18px; }
-.day-date { font-size: 16px; font-weight: 700; }
-.day-count { margin-left: auto; font-size: 13px; color: var(--text-light); }
+.day-badge { font-size: 16px; }
+.day-date { font-size: 15px; font-weight: 700; }
+.day-count { margin-left: auto; font-size: 12px; color: var(--text-light); }
 
-.day-items { padding: 8px 20px; }
+.day-items { padding: 4px 16px; }
 .plan-item {
   display: flex;
-  gap: 16px;
-  padding: 16px 0;
+  gap: 14px;
+  padding: 14px 0;
   border-bottom: 1px dashed var(--border);
+  align-items: flex-start;
 }
 .plan-item:last-child { border-bottom: none; }
 .plan-thumb {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 10px;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1134,30 +1371,31 @@ function getTripDateRange(tripItem) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 70px;
+  width: 60px;
   flex-shrink: 0;
-  gap: 4px;
+  gap: 3px;
+  padding-top: 4px;
 }
 .date-line {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--primary);
   white-space: nowrap;
 }
 .date-line.single {
-  font-size: 14px;
+  font-size: 13px;
 }
 .date-arrow {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-light);
 }
-.type-icon { font-size: 24px; margin-top: 6px; }
+.type-icon { font-size: 20px; margin-top: 4px; }
 .plan-body { flex: 1; min-width: 0; }
-.plan-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-.plan-meta { display: flex; gap: 12px; font-size: 12px; color: var(--text-light); margin-bottom: 6px; }
-.meta-type { background: #f0f2f5; padding: 1px 8px; border-radius: 4px; }
-.plan-note { font-size: 13px; color: var(--text-light); margin-bottom: 8px; }
-.plan-ops { display: flex; gap: 8px; }
+.plan-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.plan-meta { display: flex; gap: 10px; font-size: 12px; color: var(--text-light); margin-bottom: 4px; flex-wrap: wrap; }
+.meta-type { background: #f0f2f5; padding: 1px 6px; border-radius: 4px; }
+.plan-note { font-size: 12px; color: var(--text-light); margin-bottom: 6px; line-height: 1.4; }
+.plan-ops { display: flex; gap: 6px; flex-wrap: wrap; }
 .op-btn {
   background: #fff;
   border: 1px solid var(--border);
@@ -1166,8 +1404,9 @@ function getTripDateRange(tripItem) {
   font-size: 12px;
   cursor: pointer;
   color: var(--text);
+  transition: all 0.15s;
 }
-.op-btn:hover { border-color: var(--primary); color: var(--primary); }
+.op-btn:hover { border-color: var(--primary); color: var(--primary); background: #fff8f5; }
 .op-btn.danger { border-color: #ffccc7; color: #ff4d4f; }
 .op-btn.danger:hover { background: #fff1f0; }
 
@@ -1194,54 +1433,59 @@ function getTripDateRange(tripItem) {
   .overview, .day-group { box-shadow: none !important; border: 1px solid #ddd !important; }
 }
 @media (max-width: 640px) {
-  .overview { flex-direction: column; align-items: flex-start; padding: 16px; gap: 16px; }
-  .ov-title { font-size: 18px; margin-bottom: 10px; }
-  .ov-info { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .ov-arrow { display: none; }
-  .ov-del-card-btn {
-    top: 10px;
-    right: 10px;
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
-    opacity: 1;
+  .overview { padding: 12px 14px; gap: 8px; }
+  .ov-title { font-size: 17px; }
+  .ov-title-wrap { gap: 6px; }
+  .trip-active-badge { font-size: 11px; padding: 2px 8px; border-radius: 8px; }
+  .ov-del-card-btn { width: 24px; height: 24px; min-width: 24px; min-height: 24px; font-size: 11px; }
+  .ov-body { flex-direction: column; gap: 8px; }
+  .ov-info-list { gap: 5px; }
+  .ov-info-row { font-size: 13px; line-height: 1.4; }
+  .info-label { font-size: 11px; }
+  .info-value { font-size: 13px; }
+  .info-sep { font-size: 11px; }
+  .info-chip { font-size: 11px; padding: 2px 8px; }
+  .ov-stats { 
+    width: 100%; 
+    justify-content: space-around; 
+    padding-left: 0; 
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    gap: 8px;
   }
-  .trip-active-badge {
-    top: 10px;
-    left: 10px;
-    font-size: 10px;
-    padding: 2px 8px;
-  }
-  .ov-stats { width: 100%; justify-content: space-around; }
-  .stat-num { font-size: 24px; }
-  .actions { gap: 8px; }
+  .stat { min-width: 0; flex: 1; }
+  .stat-num { font-size: 22px; }
+  .stat-label { font-size: 11px; }
+  .actions { gap: 6px; margin-bottom: 12px; }
   .actions .btn-primary,
   .actions .btn-ghost,
   .actions .btn-danger {
-    flex: 1 1 calc(50% - 4px);
-    padding: 10px 12px;
-    font-size: 13px;
+    flex: 1 1 calc(50% - 3px);
+    padding: 8px 10px;
+    font-size: 12px;
     text-align: center;
-    min-height: 44px;
+    min-height: 40px;
   }
-  .day-head { padding: 12px 16px; }
-  .day-date { font-size: 14px; }
-  .day-items { padding: 8px 16px; }
-  .plan-item { flex-wrap: wrap; gap: 10px; padding: 12px 0; }
-  .plan-thumb { width: 60px; height: 60px; }
-  .plan-date-col { width: 55px; }
-  .date-line { font-size: 12px; }
-  .date-line.single { font-size: 13px; }
-  .type-icon { font-size: 20px; margin-top: 4px; }
-  .plan-title { font-size: 15px; }
-  .plan-meta { font-size: 11px; }
-  .plan-ops { flex-wrap: wrap; gap: 6px; }
-  .op-btn { padding: 6px 10px; font-size: 13px; min-height: 36px; flex: 1; text-align: center; }
-  .fav-grid { grid-template-columns: 1fr; gap: 12px; }
-  .fav-card img { height: 110px; }
+  .day-head { padding: 8px 12px; }
+  .day-date { font-size: 13px; }
+  .day-count { font-size: 11px; }
+  .day-items { padding: 2px 12px; }
+  .plan-item { flex-wrap: wrap; gap: 8px; padding: 10px 0; }
+  .plan-thumb { width: 50px; height: 50px; }
+  .plan-date-col { width: 44px; }
+  .date-line { font-size: 11px; }
+  .date-line.single { font-size: 12px; }
+  .type-icon { font-size: 16px; margin-top: 2px; }
+  .plan-title { font-size: 13px; margin-bottom: 3px; }
+  .plan-meta { font-size: 10px; gap: 5px; margin-bottom: 3px; }
+  .plan-note { font-size: 10px; margin-bottom: 4px; line-height: 1.3; }
+  .plan-ops { flex-wrap: wrap; gap: 4px; }
+  .op-btn { padding: 4px 6px; font-size: 11px; min-height: 28px; flex: 1; text-align: center; border-radius: 4px; }
+  .fav-grid { grid-template-columns: 1fr; gap: 10px; }
+  .fav-card img { height: 90px; }
   .fav-ops { flex-wrap: wrap; }
-  .fav-ops .op-btn { flex: 1; text-align: center; min-height: 36px; }
+  .fav-ops .op-btn { flex: 1; text-align: center; min-height: 30px; }
 }
 @media (max-width: 768px) {
   .actions .btn-primary,
@@ -1258,62 +1502,544 @@ function getTripDateRange(tripItem) {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.dialog-footer.mobile-footer {
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 10px;
+}
+.dialog-footer.mobile-footer .btn-ghost,
+.dialog-footer.mobile-footer .btn-primary {
+  width: 100%;
+  margin-left: 0 !important;
+  min-height: 44px;
+  font-size: 15px;
 }
 
-/* 弹窗移动端适配 */
-:deep(.mobile-dialog) {
-  .el-dialog {
-    width: 92% !important;
-    max-width: 380px;
-    margin: 5vh auto !important;
-  }
-  .el-dialog__header {
-    padding: 14px 16px;
-    .el-dialog__title {
-      font-size: 16px;
-    }
-  }
-  .el-dialog__body {
-    padding: 12px 16px;
-  }
-  .el-dialog__footer {
-    padding: 10px 16px 16px;
-  }
+/* ============================================
+   添加/编辑行程弹窗 - 全新布局样式
+   (桌面端样式，移动端通过全局 <style> 控制)
+   ============================================ */
+
+/* 弹窗头部 */
+.dialog-header {
+  padding: 8px 12px 4px;
+  background: linear-gradient(135deg, #fff8f3 0%, #ffffff 100%);
+  border-bottom: 1px solid #f5f0eb;
+}
+.dialog-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+}
+.dialog-title-icon {
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+}
+.dialog-title-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.1;
+}
+.dialog-subtitle {
+  font-size: 10px;
+  color: #999;
+  padding-left: 34px;
+  line-height: 1.1;
 }
 
+/* 表单主体 */
+.plan-form {
+  padding-top: 2px;
+}
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* 表单分割线 */
+.form-divider {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 1px;
+  padding: 1px 0;
+}
+.divider-icon {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.divider-text {
+  font-size: 10px;
+  font-weight: 600;
+  color: #ff6b35;
+  letter-spacing: 0.5px;
+}
+.form-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #ffe4d4, transparent);
+  margin-left: 4px;
+}
+
+/* 表单标签 */
+:deep(.plan-form .el-form-item) {
+  margin-bottom: 2px !important;
+}
+:deep(.plan-form .el-form-item__label) {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #333 !important;
+  padding-bottom: 0 !important;
+  line-height: 1.1 !important;
+}
+
+/* 必填星号 */
+:deep(.plan-form .el-form-item__label .el-form-item__required-asterisk) {
+  color: #ff4d4f;
+  margin-right: 2px;
+}
+
+/* 输入框 */
+:deep(.plan-form .el-input__wrapper) {
+  border-radius: 8px !important;
+  border: 1.5px solid #e8e8e8 !important;
+  background: #fafafa !important;
+  padding: 2px 8px !important;
+  min-height: 30px !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease;
+}
+:deep(.plan-form .el-input__wrapper:hover) {
+  border-color: #ffbb99 !important;
+  background: #fff !important;
+}
+:deep(.plan-form .el-input__wrapper.is-focus) {
+  border-color: #ff6b35 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1) !important;
+}
+:deep(.plan-form .el-input__inner) {
+  font-size: 12px !important;
+  color: #333 !important;
+}
+:deep(.plan-form .el-input__inner::placeholder) {
+  color: #bbb !important;
+}
+
+/* 下拉选择 */
+:deep(.plan-form .el-select .el-input__wrapper) {
+  min-height: 30px !important;
+}
+:deep(.plan-form .form-select .el-select__wrapper) {
+  border-radius: 8px !important;
+}
+
+/* 日期选择器 */
+:deep(.plan-form .form-date .el-input__wrapper) {
+  min-height: 30px !important;
+}
+:deep(.plan-form .el-date-editor .el-input__prefix) {
+  color: #ff6b35 !important;
+}
+
+/* 文本域 */
+:deep(.plan-form .form-textarea .el-textarea__inner) {
+  border-radius: 8px !important;
+  border: 1.5px solid #e8e8e8 !important;
+  background: #fafafa !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  color: #333 !important;
+  font-family: inherit !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease;
+}
+:deep(.plan-form .form-textarea .el-textarea__inner:hover) {
+  border-color: #ffbb99 !important;
+  background: #fff !important;
+}
+:deep(.plan-form .form-textarea .el-textarea__inner:focus) {
+  border-color: #ff6b35 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1) !important;
+  outline: none !important;
+}
+:deep(.plan-form .form-textarea .el-textarea__inner::placeholder) {
+  color: #bbb !important;
+}
+
+/* 日期表单区域 - 每个日期单独占一行 */
+.form-date-section {
+  margin-bottom: 0;
+}
+
+/* 底部按钮区域 */
+.plan-footer {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  justify-content: stretch;
+  padding-top: 2px;
+}
+.plan-footer.mobile-footer {
+  flex-direction: column-reverse;
+  gap: 4px;
+}
+
+/* 取消按钮 */
+.btn-outline {
+  flex: 1;
+  min-height: 32px;
+  border: 1.5px solid #e0e0e0;
+  background: #fff;
+  border-radius: 8px;
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.btn-outline:hover {
+  border-color: #bbb;
+  background: #f9f9f9;
+  color: #333;
+}
+
+/* 主按钮 */
+.btn-primary-plan {
+  flex: 1.3;
+  min-height: 32px;
+  border: none;
+  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: 0 3px 10px rgba(255, 107, 53, 0.25);
+  transition: all 0.2s ease;
+}
+.btn-primary-plan:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
+}
+.btn-primary-plan:active {
+  transform: translateY(0);
+}
+.btn-primary-plan .btn-icon {
+  font-size: 14px;
+  font-weight: 700;
+}
+</style>
+
+<style>
+/* ============================================
+   Element Plus Dialog 全局样式 - 移动端强制适配
+   ============================================ */
+
+/* ============================================
+   1. 关闭按钮样式
+   ============================================ */
+.plan-dialog-mobile .el-dialog__headerbtn {
+  top: 12px !important;
+  right: 12px !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-radius: 50% !important;
+  z-index: 10 !important;
+}
+.plan-dialog-mobile .el-dialog__headerbtn:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+.plan-dialog-mobile .el-dialog__close {
+  font-size: 14px !important;
+  color: #999 !important;
+}
+
+/* ============================================
+   2. 基础对话框样式 (桌面端 + 移动端通用)
+   ============================================ */
+.plan-dialog-mobile {
+  width: 90% !important;
+  max-width: 400px !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ============================================
+   3. 移动端强制适配 (max-width: 640px)
+   
+   Element Plus Dialog DOM 结构:
+   body
+     .el-overlay (遮罩层)
+       .el-overlay-dialog (容器, position: fixed)
+         .el-dialog (实际对话框) ← custom-class 应用在这里
+           .el-dialog__header
+           .el-dialog__body
+           .el-dialog__footer
+   ============================================ */
 @media (max-width: 640px) {
-  :deep(.mobile-dialog) {
-    .el-dialog {
-      width: 92% !important;
-      margin: 3vh auto !important;
-    }
-    .el-dialog__header {
-      padding: 12px 14px;
-      .el-dialog__title {
-        font-size: 15px;
-      }
-    }
-    .el-dialog__body {
-      padding: 10px 14px;
-    }
-    .el-dialog__footer {
-      padding: 8px 14px 14px;
-    }
-    .el-dialog__footer .dialog-footer {
-      justify-content: center;
-      button {
-        flex: 1;
-        padding: 10px 16px;
-        font-size: 14px;
-        min-height: 44px;
-      }
-    }
-    .el-form-item {
-      margin-bottom: 14px;
-    }
-    .el-form-item__label {
-      font-size: 13px;
-    }
+  /* ========= 对话框外层容器 - 全屏覆盖并居中 ========= */
+  body .el-overlay-dialog {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px !important;
+    overflow: hidden !important;
+  }
+  
+  /* ========= 实际对话框主体 - Flex布局 + 限制高度 ========= */
+  body .plan-dialog-mobile {
+    width: 100% !important;
+    max-width: 380px !important;
+    
+    /* 关键：设置固定最大高度，以确保不超出屏幕 */
+    max-height: 86vh !important;
+    height: 86vh !important;
+    
+    margin: 0 !important;
+    padding: 0 !important;
+    
+    display: flex !important;
+    flex-direction: column !important;
+    
+    overflow: hidden !important;
+    
+    border-radius: 16px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  /* ========= Header - 固定在顶部，不参与滚动 ========= */
+  body .plan-dialog-mobile .el-dialog__header {
+    flex: 0 0 auto !important;     /* 固定高度，不伸缩 */
+    padding: 0 !important;
+    margin: 0 !important;
+    border-bottom: none !important;
+    overflow: hidden !important;
+    max-height: 25% !important;
+  }
+  
+  /* ========= Body - 中间内容区域，超出则滚动 ========= */
+  body .plan-dialog-mobile .el-dialog__body {
+    flex: 1 1 auto !important;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    
+    padding: 0 10px 1px !important;
+    margin: 0 !important;
+    
+    max-height: 60% !important;
+    min-height: 50px !important;
+    
+    box-sizing: border-box !important;
+  }
+  
+  /* ========= Footer - 固定在底部，不参与滚动 ========= */
+  body .plan-dialog-mobile .el-dialog__footer {
+    flex: 0 0 auto !important;
+    padding: 3px 10px 6px !important;
+    border-top: 1px solid #f0f0f0 !important;
+    background: #fff !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    max-height: 18% !important;
+    overflow: hidden !important;
+  }
+  
+  /* ========= 弹窗内部元素样式 ========= */
+  
+  /* 头部 */
+  body .plan-dialog-mobile .dialog-header {
+    padding: 4px 10px 2px !important;
+  }
+  body .plan-dialog-mobile .dialog-title-icon {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 11px !important;
+    border-radius: 5px !important;
+  }
+  body .plan-dialog-mobile .dialog-title-text {
+    font-size: 12px !important;
+  }
+  body .plan-dialog-mobile .dialog-subtitle {
+    font-size: 9px !important;
+    padding-left: 28px !important;
+  }
+  
+  /* 表单 */
+  body .plan-dialog-mobile .plan-form {
+    padding-top: 1px !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-form-item {
+    margin-bottom: 2px !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-form-item__label {
+    font-size: 11px !important;
+    padding-bottom: 0 !important;
+    line-height: 1 !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-input__wrapper {
+    min-height: 26px !important;
+    padding: 0 6px !important;
+    border-radius: 6px !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-input__inner {
+    font-size: 12px !important;
+    line-height: 1 !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-select .el-input__wrapper {
+    min-height: 26px !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-date-editor .el-input__wrapper {
+    min-height: 26px !important;
+  }
+  
+  /* 分割线 */
+  body .plan-dialog-mobile .form-divider {
+    margin: 1px 0 !important;
+    padding: 0 !important;
+  }
+  body .plan-dialog-mobile .divider-icon {
+    font-size: 10px !important;
+  }
+  body .plan-dialog-mobile .divider-text {
+    font-size: 10px !important;
+  }
+  
+  /* 移动端表单布局：标签在上方，避免空间不足 */
+  body .plan-dialog-mobile .plan-form .el-form-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    margin-bottom: 2px !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-form-item__label {
+    width: 100% !important;
+    text-align: left !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    justify-content: flex-start !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-form-item__content {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+  
+  /* 文本域 */
+  body .plan-dialog-mobile .el-textarea__inner {
+    min-height: 26px !important;
+    max-height: 38px !important;
+    font-size: 12px !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+    line-height: 1 !important;
+  }
+  
+  /* 底部按钮 - 垂直排列 */
+  body .plan-dialog-mobile .plan-footer {
+    flex-direction: column-reverse !important;
+    gap: 3px !important;
+  }
+  body .plan-dialog-mobile .plan-footer .btn-outline,
+  body .plan-dialog-mobile .plan-footer .btn-primary-plan {
+    width: 100% !important;
+    min-height: 30px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+  }
+  body .plan-dialog-mobile .plan-footer .btn-outline {
+    min-height: 28px !important;
+  }
+}
+
+/* ============================================
+   4. 小屏手机额外适配 (max-width: 380px)
+   ============================================ */
+@media (max-width: 380px) {
+  body .plan-dialog-mobile {
+    max-width: calc(100vw - 12px) !important;
+    max-height: calc(100vh - 10px) !important;
+  }
+  
+  body .plan-dialog-mobile .dialog-title-text {
+    font-size: 11px !important;
+  }
+  body .plan-dialog-mobile .dialog-subtitle {
+    font-size: 8px !important;
+  }
+  body .plan-dialog-mobile .dialog-header {
+    padding: 4px 8px 2px !important;
+  }
+  body .plan-dialog-mobile .dialog-title-icon {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 10px !important;
+  }
+  
+  body .plan-dialog-mobile .plan-form .el-input__wrapper {
+    min-height: 24px !important;
+    padding: 0 4px !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-select .el-input__wrapper,
+  body .plan-dialog-mobile .plan-form .el-date-editor .el-input__wrapper {
+    min-height: 24px !important;
+    padding: 0 4px !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-form-item {
+    margin-bottom: 2px !important;
+  }
+  body .plan-dialog-mobile .plan-form .el-textarea__inner {
+    min-height: 24px !important;
+    max-height: 36px !important;
+  }
+  
+  body .plan-dialog-mobile .plan-footer .btn-outline,
+  body .plan-dialog-mobile .plan-footer .btn-primary-plan {
+    min-height: 28px !important;
+    font-size: 12px !important;
+  }
+  body .plan-dialog-mobile .plan-footer .btn-outline {
+    min-height: 26px !important;
+  }
+  body .plan-dialog-mobile .el-dialog__footer {
+    padding: 2px 8px 4px !important;
+  }
+  body .plan-dialog-mobile .el-dialog__body {
+    padding: 0 8px 1px !important;
   }
 }
 </style>

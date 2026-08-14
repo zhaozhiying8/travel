@@ -25,7 +25,19 @@ function cleanupInvalidTrips(loadedTrips, loadedPlans) {
   return validTrips
 }
 
+function loadActiveTripId() {
+  try { return JSON.parse(localStorage.getItem('travel_activeTripId') || 'null') }
+  catch { return null }
+}
+function saveActiveTripId(id) {
+  localStorage.setItem('travel_activeTripId', JSON.stringify(id))
+}
 function findValidActiveTripId(validTrips) {
+  // 优先使用保存的 activeTripId（如果它仍然有效）
+  const savedId = loadActiveTripId()
+  if (savedId && validTrips.some(t => t.id === savedId)) {
+    return savedId
+  }
   return validTrips[0]?.id || null
 }
 
@@ -101,6 +113,7 @@ export const useTripStore = defineStore('trip', () => {
   // 设置当前活动行程
   function setActiveTrip(tripId) {
     activeTripId.value = tripId
+    saveActiveTripId(tripId)
   }
 
   // 创建新行程
@@ -116,6 +129,7 @@ export const useTripStore = defineStore('trip', () => {
     }
     trips.value.unshift(newTrip)
     activeTripId.value = newTrip.id
+    saveActiveTripId(newTrip.id)
     saveTrips()
     return newTrip
   }
@@ -146,6 +160,7 @@ export const useTripStore = defineStore('trip', () => {
     trips.value = trips.value.filter(t => t.id !== tripId)
     if (activeTripId.value === tripId) {
       activeTripId.value = trips.value[0]?.id || null
+      saveActiveTripId(activeTripId.value)
     }
     saveTrips()
     savePlans()
@@ -190,23 +205,83 @@ export const useTripStore = defineStore('trip', () => {
     })
   }
 
+  // 检查日期是否与现有行程连续
+  function isDateContinuous(trip, planStartDate, planEndDate) {
+    if (!planStartDate) return true
+    
+    // 获取行程下所有已有的行程项
+    const tripPlans = plans.value.filter(p => p.tripId === trip.id)
+    if (tripPlans.length === 0) return true  // 行程为空，直接添加
+    
+    const newStart = new Date(planStartDate)
+    const newEnd = planEndDate ? new Date(planEndDate) : newStart
+    
+    const daysThreshold = 3  // 日期间隙阈值：3天
+    
+    // 检查新行程项与每个已有行程项的日期间隙
+    for (const existingPlan of tripPlans) {
+      const existStart = new Date(existingPlan.startDate || existingPlan.date || '')
+      const existEnd = new Date(existingPlan.endDate || existStart)
+      
+      // 计算间隙（正数表示有间隙，负数表示重叠）
+      const gapBefore = Math.ceil((existStart - newEnd) / (1000 * 60 * 60 * 24))
+      const gapAfter = Math.ceil((newStart - existEnd) / (1000 * 60 * 60 * 24))
+      
+      // 如果日期重叠（有交集），算连续
+      if (gapBefore <= 0 && gapAfter <= 0) return true
+      
+      // 如果新行程项在已有行程项之后，检查间隙
+      if (gapAfter > 0 && gapAfter <= daysThreshold) return true
+      
+      // 如果新行程项在已有行程项之前，检查间隙
+      if (gapBefore > 0 && gapBefore <= daysThreshold) return true
+    }
+    
+    return false  // 与所有行程项的间隙都超过阈值
+  }
+
   // 添加行程规划（如果没有行程，自动创建一个）
   // 返回值: { success: boolean, reason?: 'duplicate' }
   function addPlan(plan) {
+    const planStartDate = plan.startDate || plan.date || ''
+    const planEndDate = plan.endDate || planStartDate
+    
+    // 检查日期是否与现有行程连续
+    if (activeTripId.value && trips.value.length > 0) {
+      const currentTrip = trips.value.find(t => t.id === activeTripId.value)
+      if (currentTrip && planStartDate && !isDateContinuous(currentTrip, planStartDate, planEndDate)) {
+        // 日期不连续，创建新行程
+        const newTrip = createTrip({
+          origin: plan.origin || currentTrip.origin || null,
+          destination: plan.destination ? { name: plan.destination, city: plan.destination } : currentTrip.destination,
+          startDate: planStartDate,
+          endDate: planEndDate,
+          travelers: plan.travelers || currentTrip.travelers || 2
+        })
+        plan.tripId = newTrip.id
+        return addPlanToTrip(plan)
+      }
+    }
+    
+    // 没有行程或日期连续，使用原逻辑
     if (!activeTripId.value || trips.value.length === 0) {
       const newTrip = createTrip({
         origin: plan.origin || null,
         destination: plan.destination ? { name: plan.destination, city: plan.destination } : null,
-        startDate: plan.startDate || plan.date || null,
-        endDate: plan.endDate || plan.startDate || plan.date || null,
+        startDate: planStartDate || null,
+        endDate: planEndDate || planStartDate || null,
         travelers: 2
       })
       plan.tripId = newTrip.id
     } else {
       plan.tripId = activeTripId.value
     }
-
-    // 重复校验：同一行程内名称+日期相同则认为已存在
+    
+    return addPlanToTrip(plan)
+  }
+  
+  // 添加行程项到指定行程
+  function addPlanToTrip(plan) {
     const s = plan.startDate || plan.date || ''
     const e = plan.endDate || s
     if (isPlanDuplicate(plan.tripId, plan.title, s, e)) {
@@ -217,14 +292,16 @@ export const useTripStore = defineStore('trip', () => {
     plan.createdAt = new Date().toISOString()
     plans.value.unshift(plan)
 
-    updateTripDateRange(plan)
+    // 更新对应行程的日期范围
+    updateTripDateRange(plan, plan.tripId)
     savePlans()
     return { success: true }
   }
 
   // 更新行程的日期范围
-  function updateTripDateRange(plan) {
-    const idx = trips.value.findIndex(t => t.id === activeTripId.value)
+  function updateTripDateRange(plan, tripId = null) {
+    const targetTripId = tripId || activeTripId.value
+    const idx = trips.value.findIndex(t => t.id === targetTripId)
     if (idx === -1) return
     const trip = trips.value[idx]
     const planStartDate = plan.startDate || plan.date

@@ -844,10 +844,15 @@ function setDestination(city) {
       :close-on-click-modal="false"
       class="mobile-dialog"
       :top="'5vh'"
+      align-center
+      append-to-body
     >
       <div class="add-date-dialog">
         <div class="dialog-tip">请选择该景点在行程中的日期</div>
-        <el-form :label-width="isMobile ? '70px' : '90px'" label-position="left">
+        <el-form
+          :label-position="isMobile ? 'top' : 'left'"
+          :label-width="isMobile ? 'auto' : '70px'"
+        >
           <el-form-item label="开始日期" required>
             <el-date-picker v-model="addDateForm.startDate" type="date" placeholder="选择开始日期" value-format="YYYY-MM-DD" style="width:100%" />
           </el-form-item>
@@ -863,7 +868,7 @@ function setDestination(city) {
         </el-form>
       </div>
       <template #footer>
-        <div class="dialog-footer">
+        <div class="dialog-footer" :class="{ 'mobile-footer': isMobile }">
           <button class="btn-ghost" @click="showAddDateDialog = false; pendingAttraction = null">取消</button>
           <button class="btn-primary" @click="confirmAddToItinerary">确认添加</button>
         </div>
@@ -1297,66 +1302,100 @@ function setDestination(city) {
   gap: 8px;
   width: 100%;
 }
+.dialog-footer.mobile-footer {
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 10px;
+}
+.dialog-footer.mobile-footer .btn-ghost,
+.dialog-footer.mobile-footer .btn-primary {
+  width: 100%;
+  margin-left: 0 !important;
+  min-height: 44px;
+  font-size: 15px;
+}
 
 /* 弹窗移动端适配 */
-:deep(.mobile-dialog) {
-  .el-dialog {
-    width: 92% !important;
-    max-width: 380px;
-    margin: 5vh auto !important;
-  }
-  .el-dialog__header {
-    padding: 14px 16px;
-    .el-dialog__title {
-      font-size: 16px;
-    }
-  }
-  .el-dialog__body {
-    padding: 12px 16px;
-  }
-  .el-dialog__footer {
-    padding: 10px 16px 16px;
-  }
+:deep(.mobile-dialog .el-dialog) {
+  width: 92% !important;
+  max-width: 380px;
+  margin: 5vh auto !important;
+}
+:deep(.mobile-dialog .el-dialog__header) {
+  padding: 14px 16px;
+}
+:deep(.mobile-dialog .el-dialog__header .el-dialog__title) {
+  font-size: 16px;
+}
+:deep(.mobile-dialog .el-dialog__body) {
+  padding: 12px 16px;
+}
+:deep(.mobile-dialog .el-dialog__footer) {
+  padding: 10px 0 16px;
 }
 
 @media (max-width: 640px) {
-  :deep(.mobile-dialog) {
-    .el-dialog {
-      width: 92% !important;
-      margin: 3vh auto !important;
-    }
-    .el-dialog__header {
-      padding: 12px 14px;
-      .el-dialog__title {
-        font-size: 15px;
-      }
-    }
-    .el-dialog__body {
-      padding: 10px 14px;
-    }
-    .el-dialog__footer {
-      padding: 8px 14px 14px;
-    }
-    .el-dialog__footer .dialog-footer {
-      justify-content: center;
-      button {
-        flex: 1;
-        padding: 10px 16px;
-        font-size: 14px;
-      }
-    }
+  :deep(.mobile-dialog .el-dialog) {
+    width: 94% !important;
+    max-width: none;
+    margin: 4vh auto !important;
   }
-  .add-date-dialog {
+  :deep(.mobile-dialog .el-dialog__header) {
+    padding: 12px 14px;
+  }
+  :deep(.mobile-dialog .el-dialog__header .el-dialog__title) {
+    font-size: 15px;
+  }
+  :deep(.mobile-dialog .el-dialog__body) {
+    padding: 10px 14px;
+  }
+  :deep(.mobile-dialog .el-dialog__footer) {
+    padding: 8px 0 14px;
+  }
+  :deep(.mobile-dialog .el-dialog__footer .dialog-footer) {
+    justify-content: center;
+  }
+  :deep(.mobile-dialog .el-dialog__footer .dialog-footer button) {
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+  :deep(.mobile-dialog .el-form-item) {
+    margin-bottom: 14px;
+  }
+  :deep(.mobile-dialog .el-form-item__label) {
+    font-size: 13px;
+    padding-bottom: 4px;
+  }
+  :deep(.mobile-dialog .el-input__wrapper) {
+    min-height: 42px;
+  }
+  :deep(.mobile-dialog .el-date-editor) {
+    width: 100% !important;
+  }
+  :deep(.mobile-dialog) .add-date-dialog {
     padding: 0;
   }
-  .dialog-tip {
+  :deep(.mobile-dialog) .dialog-tip {
     font-size: 12px;
     padding: 6px 10px;
     margin-bottom: 12px;
   }
-  .dialog-preview {
+  :deep(.mobile-dialog) .dialog-preview {
     font-size: 13px;
     padding: 8px 10px;
+  }
+}
+</style>
+
+<style>
+.mobile-dialog .el-dialog__footer {
+  padding: 10px 0 16px;
+}
+@media (max-width: 640px) {
+  .mobile-dialog .el-dialog__footer {
+    padding: 8px 0 14px;
   }
 }
 </style>

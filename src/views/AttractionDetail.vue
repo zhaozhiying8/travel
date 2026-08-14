@@ -18,6 +18,10 @@ const activeImgIndex = ref(0)
 const imgErrors = ref({})
 let carouselTimer = null
 
+// 行程选择对话框
+const showTripDialog = ref(false)
+const selectedTripId = ref(null)
+
 // 当前景点（从trip store获取）
 const attraction = computed(() => {
   const stored = trip.selectedAttraction
@@ -267,15 +271,62 @@ function goToNearby() {
 // 加入行程
 function addToItinerary() {
   if (attraction.value) {
-    trip.addPlan({
+    const today = new Date().toISOString().split('T')[0]
+    const city = cityName.value
+    
+    // 如果有多个行程，显示选择对话框
+    if (trip.trips.length > 1) {
+      selectedTripId.value = trip.activeTripId
+      showTripDialog.value = true
+      return
+    }
+    
+    // 添加行程（trip.js中的addPlan会自动处理日期连续性）
+    const result = trip.addPlan({
       title: attraction.value.name,
       type: 'attraction',
-      destination: cityName.value,
-      attraction: { ...attraction.value, city: cityName.value },
-      date: trip.startDate || '',
+      destination: city,
+      attraction: { ...attraction.value, city: city },
+      startDate: today,
+      endDate: today,
       note: introduction.value
     })
+    
+    if (result.success) {
+      ElMessage.success(`已将「${attraction.value.name}」加入行程`)
+    } else if (result.reason === 'duplicate') {
+      ElMessage.warning('该行程已存在，请勿重复添加')
+    }
+  }
+}
+
+// 确认选择行程
+function confirmAddToTrip() {
+  showTripDialog.value = false
+  const targetTrip = trip.trips.find(t => t.id === selectedTripId.value)
+  if (!targetTrip) return
+  
+  // 切换到目标行程
+  trip.setActiveTrip(selectedTripId.value)
+  
+  const today = new Date().toISOString().split('T')[0]
+  const city = cityName.value
+  
+  // 添加行程（trip.js中的addPlan会自动处理日期连续性）
+  const result = trip.addPlan({
+    title: attraction.value.name,
+    type: 'attraction',
+    destination: city,
+    attraction: { ...attraction.value, city: city },
+    startDate: today,
+    endDate: today,
+    note: introduction.value
+  })
+  
+  if (result.success) {
     ElMessage.success(`已将「${attraction.value.name}」加入行程`)
+  } else if (result.reason === 'duplicate') {
+    ElMessage.warning('该行程已存在，请勿重复添加')
   }
 }
 
@@ -465,6 +516,51 @@ function openAmapNavigation() {
       </div>
     </template>
   </div>
+
+  <!-- 行程选择对话框 -->
+  <el-dialog
+    v-model="showTripDialog"
+    title="选择要加入的行程"
+    width="90%"
+    max-width="360px"
+    :close-on-click-modal="false"
+    align-center
+  >
+    <div style="margin-bottom:12px;color:#666;font-size:13px;">
+      请选择要将「{{ attraction?.name || '该景点' }}」加入到哪个行程：
+    </div>
+    <div class="trip-select-list">
+      <div
+        v-for="t in trip.trips"
+        :key="t.id"
+        class="trip-select-item"
+        :class="{ active: selectedTripId === t.id }"
+        @click="selectedTripId = t.id"
+      >
+        <input
+          type="radio"
+          :value="t.id"
+          v-model="selectedTripId"
+          style="margin-right:8px;"
+        />
+        <div class="trip-info">
+          <div class="trip-name">
+            {{ t.destination?.city || t.destination?.name || '我的行程' }}
+            <span v-if="t.id === trip.activeTripId" class="trip-active-tag">(当前行程)</span>
+          </div>
+          <div class="trip-date">
+            {{ t.startDate ? `${t.startDate} ~ ${t.endDate || t.startDate}` : '无日期' }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <template #footer>
+      <div class="dialog-footer">
+        <button class="btn-cancel" @click="showTripDialog = false">取消</button>
+        <button class="btn-confirm" @click="confirmAddToTrip">加入行程</button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -859,5 +955,86 @@ function openAmapNavigation() {
   .carousel-arrow { width: 32px; height: 32px; font-size: 20px; }
   .thumbs { padding: 10px 12px; }
   .thumb { width: 50px; height: 50px; }
+}
+
+/* 行程选择对话框样式 */
+.trip-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.trip-select-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+}
+
+.trip-select-item.active {
+  border-color: #ff6b35;
+  background: #fff9f5;
+}
+
+.trip-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.trip-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.trip-active-tag {
+  color: #ff6b35;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.trip-date {
+  font-size: 12px;
+  color: #999;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-cancel {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+}
+
+.btn-cancel:hover {
+  background: #f5f5f5;
+}
+
+.btn-confirm {
+  background: #ff6b35;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #fff;
+}
+
+.btn-confirm:hover {
+  background: #e55a2b;
 }
 </style>

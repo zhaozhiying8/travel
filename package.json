@@ -12,6 +12,7 @@
     "@amap/amap-jsapi-loader": "^1.0.1",
     "element-plus": "^2.7.0",
     "pinia": "^2.1.7",
+    "playwright": "^1.49.1",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
   },
